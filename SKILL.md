@@ -14,7 +14,7 @@ description: 带用户把一个想法做成一条 60–90 秒的竖屏口播视�
    - 作品目录：一条视频一个文件夹，下文写作 `<作品>`。用户指定了就用他的；没指定就建在当前工作目录的 `口播作品/<日期_短标题>/`。不要把作品放进技能目录。
 2. **确认装好了。** 运行 `node "<技能>/tools/doctor.mjs"`。
    - 有"未通过"：告诉用户要下载约 500 MB、装在技能目录里不动系统，得到同意后运行 `node "<技能>/tools/setup.mjs"`（在国内没有代理时加 `--mirror`）。几分钟能装完，可以反复运行。
-   - 连 `node` 命令都没有：请用户到 https://nodejs.org 装 LTS 版，装完重开终端。不要替他装系统软件。
+   - 连 `node` 命令都没有：先看助手自己带没带 Node。WorkBuddy 自带一份，在 `%USERPROFILE%\.workbuddy\binaries\node\versions\` 下的版本文件夹里（`current` 文件写着当前版本号），用它的 `node.exe` 完整路径代替下文所有的 `node`。都没有时，请用户到 https://nodejs.org 装 LTS 版（国内打不开就用 https://npmmirror.com/mirrors/node/ ），装完重开终端。不要替他装系统软件。
    - 其他情况查 `references/故障处理.md`。
 3. **读现状，不靠记忆。** 新作品：`node "<技能>/tools/new.mjs" "<作品>" --title … --brand …`。已有作品：`node "<技能>/tools/status.mjs" "<作品>"`，它会说走到哪一步、下一步是什么。用一句话向用户复述，然后接着做。
 

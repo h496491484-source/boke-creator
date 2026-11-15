@@ -7,15 +7,30 @@
 ## 你需要准备
 
 - 一台 Windows 10/11 或 Mac 电脑，约 1.5 GB 空闲磁盘。
-- [Claude Code](https://claude.com/claude-code) 或 Codex（能读技能、能运行命令的 AI 助手）。
-- [Node.js](https://nodejs.org) LTS 版（18 以上）。装完重开终端。
+- 一个能读技能、能在电脑上运行命令的 AI 助手，见下表。
+- Node.js LTS 版（18 以上）。WorkBuddy 自带，不用另装；用其他助手要自己装：[官网](https://nodejs.org)，国内打不开就用[镜像](https://npmmirror.com/mirrors/node/)。装完重开终端。
 - 一部能录音的手机。
+
+### 用哪个 AI 助手
+
+| 助手 | 能不能用 | 不开代理 | 说明 |
+|---|---|---|---|
+| WorkBuddy（腾讯） | 能 | 能 | 自带 Node。用它自带的 Node 跑通过自检和示例预览；在 WorkBuddy 界面里完整走五步还没实测 |
+| Claude Code | 能 | 不能，或改用 DeepSeek 接口（见下） | 开发和全部实测都在这里 |
+| Codex | 能 | 不能 | 技能格式兼容，没在 Codex 里跑过脚本 |
+| 豆包专业版（办公任务模式） | 应该能 | 能 | 它能装技能、能操作本机。需要专业版和本地授权，还没实测 |
+| DeepSeek | 不能直接用 | 能 | DeepSeek 的聊天应用不能在电脑上运行命令。可以在上面的助手里换成 DeepSeek 模型来用 |
+
+**不开代理用 Claude Code：** DeepSeek 官方支持把 Claude Code 接到 DeepSeek 模型上，[设置方法](https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/claude_code)。要在 DeepSeek 开放平台注册、充值、创建自己的 API Key，按用量付费。这条路还没实测。
 
 ## 安装
 
 1. 把整个 `boke-creator` 文件夹放到助手的技能目录：
+   - WorkBuddy：在技能页面导入这个文件夹或 zip 包；或者直接放到 `~/.workbuddy/skills/boke-creator/`（Windows 是 `C:\Users\你的用户名\.workbuddy\skills\boke-creator\`），重启 WorkBuddy。
+   - 豆包专业版：切到"办公任务"模式，在技能管理里导入；或者放到 `~/.agents/skills/boke-creator/`。以豆包当前版本的说明为准。
    - Claude Code：`~/.claude/skills/boke-creator/`（Windows 是 `C:\Users\你的用户名\.claude\skills\boke-creator\`）
    - Codex：`~/.codex/skills/boke-creator/`
+   - 放好后检查一下：`boke-creator` 文件夹里直接就能看到 `SKILL.md`，中间不要多套一层文件夹。
 2. 打开助手，说：
 
    > 用 boke-creator 技能，帮我装好环境。
