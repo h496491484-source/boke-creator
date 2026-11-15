@@ -1,0 +1,120 @@
+#!/usr/bin/env node
+// 下载识别模型（SenseVoice，int8，约 240 MB），放到技能目录 models/sense-voice。
+//
+//   node tools/get-model.mjs                   自动下载：先试 GitHub，不行换国内镜像
+//   node tools/get-model.mjs --mirror          先试国内镜像
+//   node tools/get-model.mjs --file <压缩包>   用已经下载好的压缩包（比如老师用 U 盘发的 .tar.bz2）
+//   node tools/get-model.mjs --dir <文件夹>    用已经解开的文件夹（里面有 model.int8.onnx 和 tokens.txt）
+//
+// 模型来自 sherpa-onnx 项目转换的 SenseVoiceSmall（阿里 FunAudioLLM）。
+// 许可：FunASR 模型开源协议 1.1，可以使用、复制、修改、分享，条件是注明来源和作者、保留模型名称。
+
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import { fileURLToPath } from 'node:url';
+import { ROOT } from './lib/env.mjs';
+
+const NAME = 'sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17';
+const MODEL_BYTES = 239233841; // model.int8.onnx 的大小，下载完核对
+const SOURCES = {
+  github: { label: 'GitHub', archive: `https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/${NAME}.tar.bz2` },
+  mirror: {
+    label: '国内镜像 hf-mirror.com',
+    files: {
+      'model.int8.onnx': 'https://hf-mirror.com/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/model.int8.onnx',
+      'tokens.txt': 'https://hf-mirror.com/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/tokens.txt',
+    },
+  },
+};
+export const MODEL_DIR = path.join(ROOT, 'models', 'sense-voice');
+const mb = (n) => `${(n / 1048576).toFixed(0)} MB`;
+
+export const modelReady = (dir = MODEL_DIR) => {
+  try { return fs.statSync(path.join(dir, 'model.int8.onnx')).size === MODEL_BYTES && fs.statSync(path.join(dir, 'tokens.txt')).size > 1000; } catch { return false; }
+};
+
+// 下载到文件。连不上或中途 60 秒没有数据就放弃，换下一个来源。
+async function download(url, dest, log) {
+  const ctl = new AbortController();
+  let timer = setTimeout(() => ctl.abort(), 30000);
+  const res = await fetch(url, { redirect: 'follow', signal: ctl.signal });
+  if (!res.ok || !res.body) { clearTimeout(timer); throw new Error(`HTTP ${res.status}`); }
+  const total = Number(res.headers.get('content-length')) || 0;
+  let got = 0, mark = 0.25;
+  const body = Readable.fromWeb(res.body);
+  body.on('data', (c) => {
+    got += c.length;
+    clearTimeout(timer); timer = setTimeout(() => ctl.abort(), 60000);
+    if (total && got / total >= mark && mark < 1) { log(`  ${Math.round(mark * 100)}%（${mb(got)}）`); mark += 0.25; }
+  });
+  try { await pipeline(body, fs.createWriteStream(dest)); } finally { clearTimeout(timer); }
+  return got;
+}
+
+function unpack(archive, tmp) {
+  const size = fs.statSync(archive).size;
+  if (size < 100 * 1024 * 1024) throw new Error(`压缩包只有 ${mb(size)}，不完整`);
+  const out = path.join(tmp, 'x');
+  fs.mkdirSync(out, { recursive: true });
+  const r = spawnSync('tar', ['-xjf', archive, '-C', out], { encoding: 'utf8', windowsHide: true });
+  if (r.status !== 0) throw new Error(`解压失败：${(r.stderr || r.error?.message || '').trim().split(/\r?\n/)[0]}`);
+  return path.join(out, fs.readdirSync(out)[0]);
+}
+
+function install(fromDir) {
+  if (!fs.existsSync(path.join(fromDir, 'model.int8.onnx'))) throw new Error('里面没有 model.int8.onnx，可能不是这个模型');
+  fs.mkdirSync(MODEL_DIR, { recursive: true });
+  for (const f of ['model.int8.onnx', 'tokens.txt', 'LICENSE', 'README.md']) {
+    if (fs.existsSync(path.join(fromDir, f))) fs.copyFileSync(path.join(fromDir, f), path.join(MODEL_DIR, f));
+  }
+  if (!modelReady()) throw new Error('模型文件大小不对，可能没下完整');
+}
+
+// 返回 { ok, from } 或抛错。opts: { file, dir, mirrorFirst, force, log }
+export async function getModel({ file, dir, mirrorFirst = false, force = false, log = console.log } = {}) {
+  if (modelReady() && !force) return { ok: true, from: '已经在了' };
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'boke-model-'));
+  try {
+    if (dir) { install(path.resolve(dir)); return { ok: true, from: dir }; }
+    if (file) { install(unpack(path.resolve(file), tmp)); return { ok: true, from: file }; }
+    const order = mirrorFirst ? ['mirror', 'github'] : ['github', 'mirror'];
+    const failed = [];
+    for (const key of order) {
+      const src = SOURCES[key];
+      try {
+        log(`从 ${src.label} 下载识别模型（约 ${src.archive ? '160' : '240'} MB）……`);
+        if (src.archive) {
+          const a = path.join(tmp, `${NAME}.tar.bz2`);
+          await download(src.archive, a, log);
+          install(unpack(a, tmp));
+        } else {
+          const d = path.join(tmp, 'files');
+          fs.mkdirSync(d, { recursive: true });
+          for (const [name, url] of Object.entries(src.files)) await download(url, path.join(d, name), log);
+          install(d);
+        }
+        return { ok: true, from: src.label };
+      } catch (e) {
+        const why = e.name === 'AbortError' ? '连不上或中途断了' : e.message;
+        failed.push(`${src.label}：${why}`);
+        log(`  没成功（${why}）`);
+      }
+    }
+    throw new Error(`识别模型没下载下来。${failed.join('；')}。\n可以让已经装好的人把模型压缩包发给你，然后：node tools/get-model.mjs --file <压缩包>`);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2);
+  const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
+  try {
+    const r = await getModel({ file: opt('--file'), dir: opt('--dir'), mirrorFirst: args.includes('--mirror'), force: args.includes('--force') });
+    console.log(`识别模型已就绪：${MODEL_DIR}（来源：${r.from}）`);
+  } catch (e) { console.error(e.message); process.exit(1); }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "boke-creator",
+  "version": "0.2.0",
+  "private": true,
+  "description": "口播视频技能：稿子加本人录音，出一条竖屏知识动画视频。先运行 node tools/setup.mjs。",
+  "scripts": {
+    "setup": "node tools/setup.mjs",
+    "doctor": "node tools/doctor.mjs",
+    "example": "node tools/make.mjs examples/示例_只说一件事 --demo-voice"
+  },
+  "dependencies": {
+    "@veedstudio/openedit-cli": "0.10.0",
+    "sherpa-onnx-node": "2.0.1"
+  }
+}

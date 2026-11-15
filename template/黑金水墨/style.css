@@ -1,0 +1,59 @@
+/* 黑金水墨：竖屏 1080×1920。内容区左 96、右 190（避开平台右侧按钮），顶部 220 以下（避开顶部导航）。
+   强调色用 --keyword，稿子头部写"强调色：#xxxxxx"可以换。 */
+@font-face{font-family:BenchSans;src:url('./assets/NotoSansSC-VF.ttf')}
+@font-face{font-family:BenchSerif;src:url('./assets/NotoSerifSC-VF.ttf')}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#14130f}
+:root{--keyword:#d9b566;--paper:#f1eadb;--dim:#c3b9a5;--faint:#8a8272}
+#stage{width:1080px;height:1920px;position:relative;overflow:hidden;background:#14130f;color:var(--paper);font-family:BenchSans,sans-serif}
+.scene-content{width:100%;height:100%;padding:220px 190px 240px 96px;display:flex;flex-direction:column;gap:0;position:relative;z-index:2}
+
+/* 顶部：署名、标题、短横线 */
+.brand{font-size:28px;letter-spacing:5px;color:var(--dim);line-height:1.5;min-height:42px}
+.title{font-family:BenchSerif,serif;font-size:92px;line-height:1.45;font-weight:650;margin-top:34px;letter-spacing:3px}
+.rule{width:96px;height:3px;background:var(--keyword);margin-top:30px;transform-origin:left center}
+
+/* 中部：小标题 + 画面节点 */
+.concept{margin-top:150px;display:flex;flex-direction:column;gap:36px}
+.heading-stage{position:relative;width:100%;height:80px}
+.heading{position:absolute;inset:0;font-size:40px;line-height:1.5;letter-spacing:2px;font-weight:450;color:var(--dim);display:flex;align-items:center}
+.item-stage{position:relative;width:100%;height:440px}
+.item{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-start;gap:26px;max-width:794px;padding-top:62px}
+
+/* @字：一行金字加下划线 */
+.item-word{font-size:82px;font-family:BenchSerif,serif;font-weight:650;line-height:1.45;color:var(--keyword);letter-spacing:0;text-wrap:balance}
+.item-underline{width:110px;height:4px;background:var(--keyword);transform-origin:left center}
+
+/* @大字：金句和结论，字更大，从略大缩回来 */
+.item.big{padding-top:36px;transform-origin:left center}
+.item.big .item-word{font-size:124px;line-height:1.32;font-weight:700;letter-spacing:2px}
+.item.tone-light .item-word{color:var(--paper)}
+.item.tone-grey .item-word{color:var(--faint)}
+.item.tone-dark .item-word{color:#7d6a3f}
+
+/* @对比：上面一行划掉变暗，下面一行亮起来 */
+.item.vs{gap:22px;padding-top:30px}
+.vs-a{font-size:60px;font-weight:500;line-height:1.45;color:var(--dim)}
+.vs-a-text{position:relative;display:inline-block}
+.vs-strike{position:absolute;left:-8px;right:-8px;top:54%;height:3px;background:var(--dim);transform-origin:left center}
+.vs-b{font-size:86px;font-family:BenchSerif,serif;font-weight:650;line-height:1.4;color:var(--keyword)}
+
+/* @步骤：带序号的清单，一条一条出现，说过的变暗 */
+.item.steps{gap:22px;padding-top:20px}
+.step{display:flex;align-items:center;gap:26px;height:84px}
+.step-n{flex:none;width:62px;height:62px;border:2px solid var(--keyword);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:BenchSerif,serif;font-size:36px;font-weight:650;color:var(--keyword);line-height:1}
+.step-t{font-size:60px;font-family:BenchSerif,serif;font-weight:650;line-height:1.4;color:var(--keyword);white-space:nowrap}
+
+/* 字幕：无底色、无标点，关键词换色放大 */
+.caption{position:absolute;left:96px;top:1250px;width:794px;height:200px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:52px;font-weight:500;line-height:1.55;letter-spacing:0;z-index:4;background:transparent;word-break:normal;overflow:visible}
+.caption-inner{max-width:100%;overflow:visible;text-wrap:balance}
+.kw{font-size:58px;font-weight:700;color:var(--keyword)}
+
+/* 背景的水墨弧线 */
+.ink{position:absolute;inset:0;width:1080px;height:1920px;z-index:0;opacity:.35;pointer-events:none}
+.ink path{fill:none;stroke:#75603d;stroke-width:1.5}
+.ink .wide{stroke:#4e442e;stroke-width:30;opacity:.12}
+
+/* OpenEdit 的安全区样式会改写带 data-safe 的元素，这里钉回去 */
+#stage .scene-content[data-safe]{position:relative;left:0;top:0;width:100%;height:100%;container-type:normal}
+#stage .caption[data-safe]{left:96px;top:1250px;width:794px;height:200px;container-type:normal}
