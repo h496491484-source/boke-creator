@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 一键安装：把剪播客要用的东西装进技能目录，装完自动自检。可以反复运行，已经装好的会跳过。
 //
-//   node tools/setup.mjs                      默认先走国内源，不开代理也能装（约 330 MB）
+//   node tools/setup.mjs                      默认先走国内源，不开代理也能装（约 380 MB）
 //   node tools/setup.mjs --official           先走官方源（GitHub、npm 官方），国外网络用
 //   node tools/setup.mjs --model-file <压缩包>  识别模型用现成的压缩包（.tar.bz2）
 //   node tools/setup.mjs --check              只看缺什么，不安装
@@ -11,6 +11,7 @@
 //   node_modules/        sherpa-onnx 本地识别程序，来自 npmmirror
 //   models/sense-voice   识别模型（约 230 MB），来自魔搭
 //   models/podcast       人声检测、说话人切分、声纹三个小模型（约 45 MB），来自魔搭
+//   models/music         配乐曲库的曲子（约 52 MB，CC0），来自魔搭；默认的 Aurora 随技能包带着
 //   .state/ffmpeg        找不到能用的 ffmpeg 时才下载，来自 npmmirror
 // 唯一要自己先装的是 Node 18 以上。
 
@@ -31,7 +32,7 @@ const NPM_MIRROR = 'https://registry.npmmirror.com';
 const todo = [];   // 没装成、需要人处理的
 const say = (s) => console.log(s);
 let step = 0;
-const head = (s) => say(`\n[${++step}/5] ${s}`);
+const head = (s) => say(`\n[${++step}/6] ${s}`);
 
 // ---- Node ----
 head('Node');
@@ -94,6 +95,24 @@ else {
     await getPodcastModels({ dir: opt('--podcast-model-dir'), mirrorFirst: cnFirst, log: say });
     say('✓ 装好了');
   } catch (e) { say(`✗ ${e.message}`); todo.push('播客精编用的模型'); }
+}
+
+// ---- 配乐曲库（魔搭上的 CC0 曲子；缺几首不影响剪辑：用到时会再下，下不下来用随包带的 Aurora） ----
+{
+  const { loadLibrary, trackReady } = await import('./lib/library.mjs');
+  let lib = [];
+  try { lib = loadLibrary().filter((t) => t.url); } catch (e) { say(`✗ ${e.message}`); }
+  const miss = lib.filter((t) => !trackReady(t));
+  const mbs = (miss.reduce((s, t) => s + (t.bytes ?? 0), 0) / 1048576).toFixed(0);
+  head(`配乐曲库（${lib.length} 首${miss.length ? `，还要下载约 ${mbs} MB` : ''}）`);
+  if (!miss.length) say(lib.length ? '✓ 已经有了' : '✓ 只有随包带的默认配乐');
+  else if (checkOnly) say(`△ 还差 ${miss.length} 首（不影响剪辑，用到时会自动下载）`);
+  else {
+    const { getMusic } = await import('./get-model.mjs');
+    const r = await getMusic({ log: say });
+    if (!r.failed.length) say('✓ 装好了');
+    else say(`△ 还差 ${r.failed.length} 首没下下来。不影响剪辑：用到时会再试着下载，下不下来就用默认的 Aurora。网络好的时候再运行一次 setup。`);
+  }
 }
 
 // ---- ffmpeg ----

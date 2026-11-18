@@ -14,7 +14,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { episode, mustExist, loadFull, readJson, writeJson, ff, measure, duration, fmt, fileSha, MUSIC, RATE, PUNCT, findInSentence } from '../lib/podcast.mjs';
 import { loadShow, showAsset, targetLufs } from '../lib/show.mjs';
-import { PARTS, resolveMusic, trackByPath, credit, musicName } from '../lib/library.mjs';
+import { PARTS, resolveMusic, trackByPath, trackReady, defaultEntry, credit, musicName } from '../lib/library.mjs';
+import { getMusic } from '../get-model.mjs';
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith('--'));
@@ -44,6 +45,16 @@ try {
   mus = resolveMusic(plan, { work: e.work, assets: show?.assets, showMusic: () => showAsset(show, '配乐') });
   for (const [k, a] of [['片头', intro], ['片尾', outro]]) if (a && !(a.dur > 0.5 && a.dur < 180)) throw new Error(`节目档案的${k} ${path.basename(a.file)} 长 ${a.dur.toFixed(1)} 秒，读不出来或太长（片头片尾一般几秒到一两分钟）。`);
 } catch (err) { console.error(err.message); process.exit(1); }
+// 曲库里的曲子本地还没下载：当场下载那一首；下不下来就这一处退回默认的 Aurora，提示一下，不中断
+for (const k of PARTS) {
+  const x = mus[k];
+  if (!x?.track?.url || trackReady(x.track)) continue;
+  console.log(`配乐 ${x.track.id} 本地还没有，下载中……`);
+  const r = await getMusic({ ids: [x.track.id], log: () => {} });
+  if (r.got.includes(x.track.id)) continue;
+  console.warn(`△ 配乐 ${x.track.id} 没下载下来，${k}先用默认的 Aurora。网络好了运行 node tools/setup.mjs 补下载，再重新 build。`);
+  mus[k] = defaultEntry();
+}
 const musicFor = Object.fromEntries(PARTS.map((k) => [k, mus[k]?.file ?? null]));
 // 人声结束之后还有多长：有节目片尾就放片尾；有片尾音乐就留 11 秒给它；都没有只留 2 秒
 const TAIL = outro ? 1.0 + outro.dur + 2.0 : musicFor['片尾'] ? GAP.tail : 2.0;

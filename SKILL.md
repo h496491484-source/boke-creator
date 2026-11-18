@@ -16,7 +16,7 @@ description: 播客制作人（播客后期助手）。把一期播客的原始�
    - 节目文件夹：一档节目一个，`播客精编/<节目名>/`，里面放这档节目的**节目档案**（`节目档案/`）和各期。
    - 节目目录：一期节目一个文件夹，下文写作 `<节目>`，建在节目文件夹下：`播客精编/<节目名>/<日期_期号>/`。用户指定了就用他的。不要放进技能目录。
 2. **确认装好了。** 运行 `node "<技能>/tools/doctor.mjs"`。
-   - 有"未通过"：告诉用户要下载约 330 MB（识别程序、识别模型、播客用的小模型，缺 ffmpeg 时再加一份），都装在技能目录里，不动系统，默认走国内源，正常几分钟。他同意后运行 `node "<技能>/tools/setup.mjs"`。可以反复运行。
+   - 有"未通过"：告诉用户要下载约 380 MB（识别程序、识别模型、播客用的小模型、配乐曲库，缺 ffmpeg 时再加一份），都装在技能目录里，不动系统，默认走国内源，正常几分钟。他同意后运行 `node "<技能>/tools/setup.mjs"`。可以反复运行。
    - setup 要跑好几分钟：放在**后台**运行，隔一会儿看一眼输出，告诉用户进行到第几步。十分钟还停在同一步，把那一步的输出给用户看，查 `references/故障处理.md`，不要干等。
    - 连 `node` 命令都没有：先看助手自己带没带 Node。WorkBuddy 自带一份，在 `%USERPROFILE%\.workbuddy\binaries\node\versions\` 下的版本文件夹里（`current` 文件写着当前版本号），用它的 `node.exe` 完整路径代替下文所有的 `node`。都没有时，请用户到 https://nodejs.org 装 LTS 版（国内打不开就用 https://npmmirror.com/mirrors/node/ ），装完重开终端。不要替他装系统软件。
    - 其他情况查 `references/故障处理.md`。
@@ -116,7 +116,7 @@ description: 播客制作人（播客后期助手）。把一期播客的原始�
   references/             播客_编排原则、播客_节目档案、播客_人声处理、播客_配乐与授权、播客_主理人确认单、故障处理
   tools/setup.mjs         一键安装        doctor.mjs   自检
   tools/podcast/          new  status  show  transcribe  speakers  fulltext  plan  music  build  check  notes
-  template/配乐/           配乐曲库（曲库.json 和曲子，都可免费商用）
+  template/配乐/           配乐曲库清单（曲库.json）和默认配乐 Aurora；其余曲子 setup 时下载到 models/music/
 
 <节目文件夹>/节目档案/
   档案.md   声纹.json   素材/（片头、片尾、配乐、以前的简介）

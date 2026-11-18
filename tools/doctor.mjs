@@ -41,6 +41,12 @@ const { PODCAST_MODELS, pmReady, MUSIC } = await import('./lib/podcast.mjs');
 const pmMiss = Object.keys(PODCAST_MODELS).filter((k) => !pmReady(k));
 add('播客模型', pmMiss.length ? '未通过' : '通过', pmMiss.length ? `缺：${pmMiss.map((k) => PODCAST_MODELS[k].what).join('、')}` : '人声检测、说话人切分、声纹', pmMiss.length ? SETUP : null);
 add('配乐', fs.existsSync(MUSIC) ? '通过' : '提示', fs.existsSync(MUSIC) ? 'Aurora（CC0）' : '技能包里的配乐文件不在，精编版会没有片头片尾音乐', fs.existsSync(MUSIC) ? null : '重新解压技能包');
+// 配乐曲库：缺了只算提示（用到时会自动下载，下不下来用 Aurora）；曲库文件读不出来才算没过
+try {
+  const { loadLibrary, trackReady } = await import('./lib/library.mjs');
+  const lib = loadLibrary().filter((t) => t.url), miss = lib.filter((t) => !trackReady(t));
+  if (lib.length) add('配乐曲库', miss.length ? '提示' : '通过', miss.length ? `${lib.length} 首里还差 ${miss.length} 首没下载（用到时会自动下载）` : `${lib.length} 首都在`, miss.length ? SETUP : null);
+} catch (err) { add('配乐曲库', '未通过', err.message, '重新解压技能包'); }
 
 // ---- 输出 ----
 const w = (s, n) => s + ' '.repeat(Math.max(0, n - [...s].reduce((k, ch) => k + (ch.charCodeAt(0) > 255 ? 2 : 1), 0)));

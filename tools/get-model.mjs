@@ -187,9 +187,44 @@ export async function getPodcastModels({ dir, mirrorFirst = false, force = false
   return { ok: true };
 }
 
+// ---- 配乐曲库：曲库.json 里有 url 的曲子，下载到 models/music/（合计约 52 MB）----
+// 来源依次：国内模型地址（魔搭转存仓库）的 music/<文件> → 曲库.json 里记的 url。按大小和 sha256 核对，先下到临时文件再换上。
+// ids 不给就下全部缺的；返回 { got, failed }，不抛错（缺几首不影响剪辑：用到时会再下，下不下来用 Aurora）
+export async function getMusic({ ids, force = false, log = console.log } = {}) {
+  const { loadLibrary, trackReady, MUSIC_DIR } = await import('./lib/library.mjs');
+  const want = loadLibrary().filter((t) => t.url && (!ids || ids.includes(t.id)) && (force || !trackReady(t)));
+  const got = [], failed = [];
+  if (!want.length) return { got, failed };
+  fs.mkdirSync(MUSIC_DIR, { recursive: true });
+  for (const t of want) {
+    const urls = [...new Set([...modelMirrors().map((b) => `${b}/music/${t.file}`), t.url])];
+    let ok = false;
+    for (const url of urls) {
+      const part = `${t.path}.part`;
+      try {
+        await download(url, part, () => {});
+        if (t.bytes && fs.statSync(part).size !== t.bytes) throw new Error('大小不对');
+        if (t.sha256 && sha256File(part) !== t.sha256) throw new Error('校验不对');
+        fs.renameSync(part, t.path);
+        ok = true; break;
+      } catch (e) {
+        fs.rmSync(part, { force: true });
+        log(`    ${t.id}：${new URL(url).host} 没成功（${e.name === 'AbortError' ? '连不上或中途断了' : e.message}）`);
+      }
+    }
+    (ok ? got : failed).push(t.id);
+  }
+  log(`  配乐：下好 ${got.length} 首${failed.length ? `，${failed.length} 首没下下来（${failed.join('、')}）` : ''}`);
+  return { got, failed };
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
+  if (args.includes('--music')) {
+    const r = await getMusic({ force: args.includes('--force') });
+    process.exit(r.failed.length ? 1 : 0);
+  }
   if (args.includes('--podcast')) {
     try {
       await getPodcastModels({ dir: opt('--dir'), mirrorFirst: args.includes('--mirror'), force: args.includes('--force') });

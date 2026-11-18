@@ -6,7 +6,7 @@
 
 ## 你需要准备
 
-- 一台 Windows 10/11 或 Mac 电脑，约 2 GB 空闲磁盘（技能约 330 MB；剪一期一小时的节目，中间文件约 1.3 GB）。
+- 一台 Windows 10/11 或 Mac 电脑，约 2 GB 空闲磁盘（技能装好约 380 MB；剪一期一小时的节目，中间文件约 1.3 GB）。
 - 一个能读技能、能在电脑上运行命令的 AI 助手，见下表。
 - Node.js LTS 版（18 以上）。WorkBuddy 自带，不用另装；用其他助手要自己装：[官网](https://nodejs.org)，国内打不开就用[镜像](https://npmmirror.com/mirrors/node/)。装完重开终端。
 - 一期播客的原始录音（mp3、m4a、wav 都行）。
@@ -43,7 +43,7 @@
 
    > 用 boke-creator 技能，帮我装好环境。
 
-   它会运行安装脚本，下载约 330 MB（识别程序、识别模型、播客用的小模型，电脑上没有 ffmpeg 时再加一份），全部放在技能文件夹里，不改系统。也可以自己在技能文件夹里运行：
+   它会运行安装脚本，下载约 380 MB（识别程序、识别模型、播客用的小模型、30 多首可以免费商用的配乐，电脑上没有 ffmpeg 时再加一份），全部放在技能文件夹里，不改系统。也可以自己在技能文件夹里运行：
 
    ```bash
    node tools/setup.mjs
@@ -119,5 +119,5 @@
 
 - 本地识别：[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)（Apache-2.0）和 SenseVoiceSmall 模型（FunAudioLLM，FunASR 模型开源协议 1.1），安装时下载。
 - 分说话人和人声检测：Silero VAD（MIT）、pyannote segmentation 3.0（MIT）、3D-Speaker ERes2Net 声纹模型（Apache-2.0），安装时下载。
-- 配乐：Aurora by Trex0n（CC0），随包分发。
+- 配乐：默认的 Aurora by Trex0n（CC0）随包分发；曲库里另外 31 首都是 OpenGameArt 上的 CC0 曲子（作者和来源页见 `template/配乐/曲库.json`），转存在魔搭，安装时下载。
 - 音频处理：ffmpeg（GPL-3.0），用电脑上已有的，没有时安装时下载。
