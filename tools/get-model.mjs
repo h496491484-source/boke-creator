@@ -41,7 +41,8 @@ const SV_FILES = {
 // 国内模型地址：放着全部模型文件的地方（<地址>/sense-voice/model.int8.onnx、<地址>/podcast/silero_vad.onnx ……）。
 // 2026-11-18 起 hf-mirror.com 会跳转到 huggingface.co，国内不开代理下不了，GitHub 也常断，所以要有一个国内的地址。
 // 来源（依次）：环境变量 BOKE_MODEL_MIRROR（逗号分隔可写几个）→ boke-creator.local.json 的 modelMirror → 下面内置的。
-export const CN_MODEL_MIRRORS = [];
+// 魔搭上的转存仓库（2026-11-18 建，原样转存，带来源和许可证说明）：https://modelscope.cn/models/jimmy444629/boke-creator-models
+export const CN_MODEL_MIRRORS = ['https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master'];
 export function modelMirrors() {
   let cfg = {};
   try { cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'boke-creator.local.json'), 'utf8')); } catch { /* 没有本机配置 */ }

@@ -51,7 +51,7 @@
 
 3. 看到"自检通过"就好了。ffmpeg 会从国内镜像自动下载（Windows 和 Mac 都行）。
 
-**国内不开代理的已知问题**：识别模型（约 240 MB）和播客用的小模型目前只能从国外下载，国内不开代理大概率下不下来。办法：用"离线完整包"；或者让已经装好的人把技能目录里的 `models` 文件夹拷给你，再运行 `node tools/get-model.mjs --dir <文件夹>/sense-voice` 和 `node tools/get-model.mjs --podcast --dir <文件夹>/podcast`。
+国内不开代理也能装：识别模型和播客用的小模型先从魔搭（[转存仓库](https://modelscope.cn/models/jimmy444629/boke-creator-models)）下载，ffmpeg 从 npmmirror 下载，都按校验值核对。渲染程序 OpenEdit 在国内镜像上还是旧版，会退回 npm 官方源，慢一点但一般能装上。
 
 拿到的是"离线完整包"（文件夹里已经有 `node_modules`）的话，跳过第 2 步的下载，直接自检：`node tools/doctor.mjs`。
 
