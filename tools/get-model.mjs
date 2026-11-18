@@ -55,21 +55,31 @@ export const modelReady = (dir = MODEL_DIR) => {
   try { return fs.statSync(path.join(dir, 'model.int8.onnx')).size === MODEL_BYTES && fs.statSync(path.join(dir, 'tokens.txt')).size > 1000; } catch { return false; }
 };
 
-// 下载到文件。连不上或中途 60 秒没有数据就放弃，换下一个来源。
+// 下载到文件。连不上、中途 60 秒没有数据、或者太慢（GitHub 在国内常被限速到每分钟几十 KB，
+// 不报错但永远下不完），都放弃，换下一个来源。
+const MIN_SPEED = 50 * 1024; // 每秒字节数；开头 45 秒不算，之后平均低于这个就换来源
 async function download(url, dest, log) {
   const ctl = new AbortController();
   let timer = setTimeout(() => ctl.abort(), 30000);
+  let slow = false;
   const res = await fetch(url, { redirect: 'follow', signal: ctl.signal });
   if (!res.ok || !res.body) { clearTimeout(timer); throw new Error(`HTTP ${res.status}`); }
   const total = Number(res.headers.get('content-length')) || 0;
   let got = 0, mark = 0.25;
+  const t0 = Date.now();
+  const speed = setInterval(() => {
+    const s = (Date.now() - t0) / 1000;
+    if (s > 45 && got / s < MIN_SPEED && (!total || got < total)) { slow = true; ctl.abort(); }
+  }, 5000);
   const body = Readable.fromWeb(res.body);
   body.on('data', (c) => {
     got += c.length;
     clearTimeout(timer); timer = setTimeout(() => ctl.abort(), 60000);
     if (total && got / total >= mark && mark < 1) { log(`  ${Math.round(mark * 100)}%（${mb(got)}）`); mark += 0.25; }
   });
-  try { await pipeline(body, fs.createWriteStream(dest)); } finally { clearTimeout(timer); }
+  try { await pipeline(body, fs.createWriteStream(dest)); }
+  catch (e) { if (slow) throw new Error(`太慢（每秒不到 ${MIN_SPEED / 1024} KB）`); throw e; }
+  finally { clearTimeout(timer); clearInterval(speed); }
   return got;
 }
 
@@ -107,7 +117,7 @@ export async function getModel({ file, dir, mirrorFirst = false, force = false, 
     for (const key of order) {
       const src = all[key];
       try {
-        log(`从 ${src.label} 下载识别模型（约 ${src.archive ? '160' : '240'} MB）……`);
+        log(`从 ${src.label} 下载识别模型（约 ${src.archive ? '160' : '230'} MB）……`);
         if (src.archive) {
           const a = path.join(tmp, `${NAME}.tar.bz2`);
           await download(src.archive, a, log);

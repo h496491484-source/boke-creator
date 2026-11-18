@@ -4,10 +4,3 @@ node_modules/
 models/
 boke-creator.local.json
 dist/
-
-# 示例跑出来的东西
-examples/*/voice.wav
-examples/*/timing.json
-examples/*/*.mp4
-examples/*/*.json
-examples/*/制作文件/

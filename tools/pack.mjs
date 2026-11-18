@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // 打分发包（给维护者用，学员用不到）。
 //
-//   node tools/pack.mjs                  轻量包：只有技能本身（约 45 MB，主要是字体），对方自己运行 setup 下载其余的
-//   node tools/pack.mjs --with-runtime   离线完整包：连同已装好的渲染程序、浏览器、识别模型一起打（约 600 MB）
+//   node tools/pack.mjs                  轻量包：只有技能本身（约 4 MB，主要是配乐），对方自己运行 setup 下载其余的
+//   node tools/pack.mjs --with-runtime   离线完整包：连同已装好的识别程序、模型、ffmpeg 一起打（约 300 MB）
 //                                        只能给**同一种系统**的人用（Windows 打的包给 Windows），对方解压后不用联网
 //       [--out <目录>]                   输出目录，默认 dist/
 //
-// 永远不打进去的：本机路径 boke-creator.local.json、示例跑出来的音视频、dist/、.git。
+// 永远不打进去的：本机路径 boke-creator.local.json、dist/、.git。
 // 压缩包自己写，不调系统的压缩命令：文件名统一 UTF-8、路径统一正斜杠，Windows 和 Mac 解出来都不乱码。
 
 import fs from 'node:fs';
@@ -22,7 +22,7 @@ const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf
 const TOP = 'boke-creator'; // 压缩包里的顶层文件夹名
 
 const RUNTIME = ['node_modules', '.state', 'models'];
-const TOP_SKIP = new Set(['boke-creator.local.json', 'dist', '.git']);      // 只在技能目录第一层排除（依赖包里也有叫 dist 的目录，那些要留）
+const TOP_SKIP = new Set(['boke-creator.local.json', 'dist', '.git', 'video-deps', 'examples']); // 只在技能目录第一层排除（依赖包里也有叫 dist 的目录，那些要留）；后两个是下掉的口播视频留下的
 const JUNK = new Set(['.DS_Store', 'Thumbs.db']);                     // 在哪一层都不要
 function wanted(rel) { // rel 用正斜杠
   const parts = rel.split('/');
@@ -30,11 +30,12 @@ function wanted(rel) { // rel 用正斜杠
   if (RUNTIME.includes(parts[0])) {
     if (!full) return false;
     if (parts.includes('.bin')) return false;                               // 里面是指向别处的快捷方式
-    if (parts[0] === '.state' && !['browser', 'ffmpeg'].includes(parts[1])) return false; // 锁文件、更新检查记录
+    if (parts[0] === 'node_modules' && !/^(sherpa-onnx|\.package-lock\.json$)/.test(parts[1])) return false; // 旧安装留下的口播视频依赖不带
+    if (parts[0] === '.state' && parts[1] !== 'ffmpeg') return false;       // 只带 ffmpeg（旧安装的浏览器、锁文件不带）
     if (/\.tmp-/.test(rel)) return false;
     return true;
   }
-  if (parts[0] === 'examples' && parts.length > 2) return parts.length === 3 && parts[2] === '口播稿.txt'; // 示例只带稿子
+  if (parts[0] === 'template' && parts[1] !== '配乐') return false;          // 旧的口播视频模板
   return true;
 }
 
@@ -50,11 +51,11 @@ const files = [];
 files.sort((a, b) => a.rel.localeCompare(b.rel));
 
 if (full) {
-  const missing = ['node_modules/@veedstudio/openedit-cli/cli/dist/cli.js', 'node_modules/sherpa-onnx-node/package.json', 'models/sense-voice/model.int8.onnx',
+  const missing = ['node_modules/sherpa-onnx-node/package.json', 'models/sense-voice/model.int8.onnx',
     'models/podcast/silero_vad.onnx', 'models/podcast/pyannote-segmentation-3-0.onnx', 'models/podcast/3dspeaker-eres2net-base-zh.onnx']
     .filter((f) => !files.some((x) => x.rel === f));
-  if (missing.length || !files.some((x) => x.rel.startsWith('.state/browser/'))) {
-    console.error('这台电脑上还没装全，打不了离线完整包。先运行 node tools/setup.mjs，自检通过后再打。');
+  if (missing.length) {
+    console.error(`这台电脑上还没装全（缺 ${missing.join('、')}），打不了离线完整包。先运行 node tools/setup.mjs，自检通过后再打。`);
     process.exit(1);
   }
 }
@@ -89,7 +90,7 @@ for (const f of files) {
   head.writeUInt16LE(name.length, 26); head.writeUInt16LE(0, 28);
   const at = offset;
   write(head); write(name); write(body);
-  // 记下权限位：Mac 上浏览器和动态库要有"可执行"才能跑
+  // 记下权限位：Mac 上 ffmpeg 和动态库要有"可执行"才能跑
   central.push({ name, method, time, date, crc, csize: body.length, size: data.length, at, mode: st.mode & 0xffff });
   raw += data.length;
 }
