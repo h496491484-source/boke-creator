@@ -20,6 +20,7 @@ import { pathToFileURL } from 'node:url';
 import { ROOT, STATE_DIR, OPENEDIT_PKG, findFfmpeg, findOpenedit, findStateDir, systemBrowsers, saveConfig, loadConfig } from './lib/env.mjs';
 import { findSherpa, findModel } from './asr.mjs';
 import { getModel, modelReady } from './get-model.mjs';
+import { getFfmpegFromMirror, mirrorSupported } from './get-ffmpeg.mjs';
 
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
@@ -136,13 +137,24 @@ head(5, 'ffmpeg（转录音格式、合成视频）');
 let ff = findFfmpeg();
 if (ff.ok) say(`✓ ${ff.version}（${ff.from}）`);
 else if (checkOnly) { say('✗ 没找到'); todo.push('ffmpeg'); }
-else if (process.platform === 'win32' && fs.existsSync(OPENEDIT_PKG)) {
-  say('没找到能用的 ffmpeg，下载一份放进技能目录（下载约 100 MB，解开约 300 MB，不动系统）……');
-  // 要加 --force：系统 PATH 里有一个跑不起来的 ffmpeg（比如 winget 留下的 0 字节文件）时，不加它会以为"已经装了"而什么都不做（2026-11-15 实测）
-  spawnSync(process.execPath, [path.join(OPENEDIT_PKG, 'cli', 'dist', 'cli.js'), 'install-ffmpeg', '--force'], { stdio: 'inherit', env: { ...process.env, OPENEDIT_STATE_DIR: STATE_DIR }, windowsHide: true });
-  ff = findFfmpeg();
+else if (mirrorSupported() || (process.platform === 'win32' && fs.existsSync(OPENEDIT_PKG))) {
+  say('没找到能用的 ffmpeg，下载一份放进技能目录（不动系统）……');
+  // 先走国内镜像 npmmirror（gyan.dev 的 ffmpeg 6.0，按 sha256 核对，国内不开代理也能下）
+  if (mirrorSupported()) {
+    try { await getFfmpegFromMirror({ log: say }); } catch (e) { say(`  国内镜像没成功（${e.message}）`); }
+    ff = findFfmpeg();
+  }
+  // 退路（Windows）：OpenEdit 自带的下载，从 gyan.dev（国外）下。要加 --force：PATH 里有跑不起来的 ffmpeg（比如 winget 留下的 0 字节文件）时，不加它会以为"已经装了"（2026-11-15 实测）
+  if (!ff.ok && process.platform === 'win32' && fs.existsSync(OPENEDIT_PKG)) {
+    say('  改从 gyan.dev 下载（约 100 MB）……');
+    spawnSync(process.execPath, [path.join(OPENEDIT_PKG, 'cli', 'dist', 'cli.js'), 'install-ffmpeg', '--force'], { stdio: 'inherit', env: { ...process.env, OPENEDIT_STATE_DIR: STATE_DIR }, windowsHide: true });
+    ff = findFfmpeg();
+  }
   if (ff.ok) say(`✓ 装好了：${ff.version}`);
-  else { say('✗ 没装成。可以自己装：在终端运行 winget install Gyan.FFmpeg，装完重开终端。'); todo.push('ffmpeg（winget install Gyan.FFmpeg）'); }
+  else {
+    say(process.platform === 'win32' ? '✗ 没装成。可以自己装：在终端运行 winget install Gyan.FFmpeg，装完重开终端。' : '✗ 没装成。可以自己装：brew install ffmpeg（没有 brew 先到 https://brew.sh 装）');
+    todo.push(process.platform === 'win32' ? 'ffmpeg（winget install Gyan.FFmpeg）' : 'ffmpeg（brew install ffmpeg）');
+  }
 } else {
   say(process.platform === 'darwin'
     ? '✗ 没找到 ffmpeg。在终端运行：brew install ffmpeg（没有 brew 的话先到 https://brew.sh 装）'

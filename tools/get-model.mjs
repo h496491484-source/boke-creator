@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +33,21 @@ const SOURCES = {
   },
 };
 export const MODEL_DIR = path.join(ROOT, 'models', 'sense-voice');
+const SV_FILES = {
+  'model.int8.onnx': { bytes: MODEL_BYTES, sha256: 'c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51' },
+  'tokens.txt': { bytes: 315894, sha256: 'f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc' },
+};
+
+// 国内模型地址：放着全部模型文件的地方（<地址>/sense-voice/model.int8.onnx、<地址>/podcast/silero_vad.onnx ……）。
+// 2026-11-18 起 hf-mirror.com 会跳转到 huggingface.co，国内不开代理下不了，GitHub 也常断，所以要有一个国内的地址。
+// 来源（依次）：环境变量 BOKE_MODEL_MIRROR（逗号分隔可写几个）→ boke-creator.local.json 的 modelMirror → 下面内置的。
+export const CN_MODEL_MIRRORS = [];
+export function modelMirrors() {
+  let cfg = {};
+  try { cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'boke-creator.local.json'), 'utf8')); } catch { /* 没有本机配置 */ }
+  return [...(process.env.BOKE_MODEL_MIRROR ?? '').split(','), ...[cfg.modelMirror ?? []].flat(), ...CN_MODEL_MIRRORS].map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean);
+}
+const sha256File = (f) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
 const mb = (n) => `${(n / 1048576).toFixed(0)} MB`;
 
 export const modelReady = (dir = MODEL_DIR) => {
@@ -82,10 +98,13 @@ export async function getModel({ file, dir, mirrorFirst = false, force = false, 
   try {
     if (dir) { install(path.resolve(dir)); return { ok: true, from: dir }; }
     if (file) { install(unpack(path.resolve(file), tmp)); return { ok: true, from: file }; }
-    const order = mirrorFirst ? ['mirror', 'github'] : ['github', 'mirror'];
+    // 国内模型地址排最前（有的话）；其余按 --mirror 决定 hf-mirror 和 GitHub 的先后
+    const cn = modelMirrors().map((base, i) => [`cn${i}`, { label: `国内模型地址 ${new URL(base).host}`, files: Object.fromEntries(Object.keys(SV_FILES).map((n) => [n, `${base}/sense-voice/${n}`])), verify: true }]);
+    const all = { ...Object.fromEntries(cn), ...SOURCES };
+    const order = [...cn.map(([k]) => k), ...(mirrorFirst ? ['mirror', 'github'] : ['github', 'mirror'])];
     const failed = [];
     for (const key of order) {
-      const src = SOURCES[key];
+      const src = all[key];
       try {
         log(`从 ${src.label} 下载识别模型（约 ${src.archive ? '160' : '240'} MB）……`);
         if (src.archive) {
@@ -96,6 +115,7 @@ export async function getModel({ file, dir, mirrorFirst = false, force = false, 
           const d = path.join(tmp, 'files');
           fs.mkdirSync(d, { recursive: true });
           for (const [name, url] of Object.entries(src.files)) await download(url, path.join(d, name), log);
+          for (const [name, want] of Object.entries(SV_FILES)) if (sha256File(path.join(d, name)) !== want.sha256) throw new Error(`${name} 校验不对`);
           install(d);
         }
         return { ok: true, from: src.label };
@@ -128,7 +148,7 @@ export async function getPodcastModels({ dir, mirrorFirst = false, force = false
       const hit = local.find((f) => fs.statSync(f).size === m.bytes && accept(f));
       if (hit) { fs.copyFileSync(hit, pmPath(key)); log(`  ${m.what}：从 ${hit} 拷来`); continue; }
       if (dir) { failed.push(`${m.what}（文件夹里没有）`); continue; }
-      const urls = mirrorFirst ? [...m.urls].reverse() : m.urls;
+      const urls = [...modelMirrors().map((b) => `${b}/podcast/${m.file}`), ...(mirrorFirst ? [...m.urls].reverse() : m.urls)];
       let ok = false;
       for (const u of urls) {
         const url = typeof u === 'string' ? u : u.archive;

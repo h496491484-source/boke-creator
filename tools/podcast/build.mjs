@@ -98,6 +98,8 @@ for (const sec of plan.sections) {
 // ---------- 渲染一版 ----------
 function render(processed, outDir) {
   fs.mkdirSync(outDir, { recursive: true });
+  // 先删掉旧成品：剪到一半失败时不留旧文件，免得后面的检查查到旧的还说通过
+  for (const f of ['精编版.mp3', '剪辑表.json', '章节目录.txt', '检查报告.json', '节目简介.md']) fs.rmSync(path.join(outDir, f), { force: true });
   let src = e.wav44;
   if (processed) {
     if (!fs.existsSync(e.wav44dn) || fs.statSync(e.wav44dn).mtimeMs < fs.statSync(e.wav44).mtimeMs) ff(['-v', 'error', '-i', e.wav44, '-af', PROC.denoise, '-c:a', 'pcm_s16le', e.wav44dn], '低切降噪');
@@ -165,10 +167,10 @@ function render(processed, outDir) {
 
   const loudnorm = (input, output, pre = '') => {
     const p = pre ? `${pre},` : '';
-    const inA = ['-f', 's16le', '-ar', RATE, '-ac', CH, '-i', input];
+    const inA = ['-f', 's16le', '-ar', RATE, '-ac', CH, '-i', input]; // 原始 PCM 不带声道布局：滤镜末尾显式写 stereo（ffmpeg 6.0 不会自己猜，9.0 会）
     const m = ff([...inA, '-af', `${p}loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json`, '-f', 'null', '-'], '响度测量');
     const j = JSON.parse(m.slice(m.lastIndexOf('{'), m.lastIndexOf('}') + 1));
-    ff([...inA, '-af', `${p}loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${j.input_i}:measured_TP=${j.input_tp}:measured_LRA=${j.input_lra}:measured_thresh=${j.input_thresh}:offset=${j.target_offset}:linear=true,aresample=${RATE}`, '-c:a', 'pcm_s16le', output], '响度调整');
+    ff([...inA, '-af', `${p}loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${j.input_i}:measured_TP=${j.input_tp}:measured_LRA=${j.input_lra}:measured_thresh=${j.input_thresh}:offset=${j.target_offset}:linear=true,aresample=${RATE},aformat=sample_fmts=s16:channel_layouts=stereo`, '-c:a', 'pcm_s16le', output], '响度调整');
     return j;
   };
   const voiceWav = path.join(outDir, 'voice_norm.wav');

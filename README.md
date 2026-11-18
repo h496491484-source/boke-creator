@@ -49,7 +49,9 @@
    node tools/setup.mjs --mirror
    ```
 
-3. 看到"自检通过"就好了。Mac 上如果提示没有 ffmpeg，运行 `brew install ffmpeg`。
+3. 看到"自检通过"就好了。ffmpeg 会从国内镜像自动下载（Windows 和 Mac 都行）。
+
+**国内不开代理的已知问题**：识别模型（约 240 MB）和播客用的小模型目前只能从国外下载，国内不开代理大概率下不下来。办法：用"离线完整包"；或者让已经装好的人把技能目录里的 `models` 文件夹拷给你，再运行 `node tools/get-model.mjs --dir <文件夹>/sense-voice` 和 `node tools/get-model.mjs --podcast --dir <文件夹>/podcast`。
 
 拿到的是"离线完整包"（文件夹里已经有 `node_modules`）的话，跳过第 2 步的下载，直接自检：`node tools/doctor.mjs`。
 

@@ -27,6 +27,7 @@ const byId = new Map(full.map((s) => [s.id, s]));
 const bare = (t) => t.replace(/[，。！？、；：,.!?;:\s]/g, '');
 const anchor = (p) => `${bare(byId.get(p.from).text).slice(0, 6)}…${bare(byId.get(p.to).text).slice(-6)}`;
 const errors = [], warns = [];
+const ed = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
 
 // ---- 1. 逐段检查，算真实起止 ----
 const parts = [];
@@ -36,7 +37,8 @@ plan.sections.forEach((sec, si) => {
     const where = `「${sec.name}」第 ${pi + 1} 段（${p.label ?? ''}）`;
     const a = byId.get(p.from), b = byId.get(p.to);
     if (!a || !b || p.from > p.to) { errors.push(`${where}：句子编号 ${p.from}–${p.to} 不对（全文共 ${full.length} 句）`); return; }
-    if (p.check && !args.includes('--refresh') && p.check !== anchor(p)) {
+    // 差两三个字算同一处（同一段录音重新识别，同音字可能认得不一样）；差得多才是编号错位
+    if (p.check && !args.includes('--refresh') && ed(p.check, anchor(p)) > 3) {
       const head = p.check.split('…')[0];
       const guess = full.filter((s) => bare(s.text).startsWith(head)).map((s) => s.id);
       errors.push(`${where}：记的原文是「${p.check}」，现在 ${p.from}–${p.to} 句是「${anchor(p)}」，对不上（重新识别过？）。${guess.length ? `开头像第 ${guess.join('、')} 句。` : ''}改好编号后加 --refresh`);
