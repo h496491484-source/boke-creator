@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { episode, mustExist, loadFull, readJson, writeJson, ff, measure, duration, fmt, fileSha, MUSIC, RATE, PUNCT, findInSentence } from '../lib/podcast.mjs';
 import { loadShow, showAsset, targetLufs } from '../lib/show.mjs';
-import { isLibRef, libTrack, trackByPath, credit } from '../lib/library.mjs';
+import { PARTS, resolveMusic, trackByPath, credit, musicName } from '../lib/library.mjs';
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith('--'));
@@ -33,35 +33,20 @@ const plan = readJson(e.plan, null);
 if (!plan) { console.error('还没有 编排方案.json'); process.exit(1); }
 
 // 节目档案：片头、片尾（主理人自己的音频）、配乐、成品响度。没有档案就用默认（自带配乐、-16 LUFS、没有片头片尾）
-// 配乐分三处：片头铺底、板块过渡、片尾铺底。先看节目档案的"配乐"，再用这期 编排方案.json 的 music 覆盖：
-//   false 不要配乐；"库:<id>" 三处都用这一首；{ "片头": "库:a", "过渡": "库:b", "片尾": "库:a" } 分开指定（没写的那处照档案）。
-//   "过渡音"（几秒的短音）只能用在"过渡"。
-const PARTS = ['片头', '过渡', '片尾'];
-let show, LUFS, intro, outro, musicFor;
+// 配乐分三处：片头铺底、板块过渡、片尾铺底。规则在 lib/library.mjs 的 resolveMusic（plan.mjs 用同一个）：
+//   编排方案.json 的 music 覆盖节目档案的"配乐"；false 不要；"库:<id>" 三处都用；{ "片头", "过渡", "片尾" } 分开写。
+let show, LUFS, intro, outro, mus;
 try {
   show = loadShow(e);
   LUFS = targetLufs(show);
   const asset = (k) => { const p = showAsset(show, k); return p ? { file: p, dur: duration(p) } : null; };
   intro = asset('片头'); outro = asset('片尾');
-  const sm = showAsset(show, '配乐');
-  const base = sm === 'default' ? (fs.existsSync(MUSIC) ? MUSIC : null) : sm;
-  const pick = (v, part) => {
-    if (v === false || v === null || /^(无|没有|不要|不加)$/.test(String(v).trim())) return null;
-    if (typeof v !== 'string') throw new Error(`编排方案.json 的 music${part ? `.${part}` : ''} 写法不对：写 false、"库:<编号>"，或者分开写 {"片头": …, "过渡": …, "片尾": …}`);
-    if (/^(默认|自带)$/.test(v.trim())) return fs.existsSync(MUSIC) ? MUSIC : null;
-    if (isLibRef(v)) return libTrack(v).path;
-    const hit = [path.resolve(e.work, v), show && path.resolve(show.assets, v)].filter(Boolean).find((p) => fs.existsSync(p) && fs.statSync(p).isFile());
-    if (!hit) throw new Error(`编排方案.json 的配乐写的是 ${v}，找不到这个文件，也不是"库:<编号>"。`);
-    return hit;
-  };
-  musicFor = Object.fromEntries(PARTS.map((k) => [k, base]));
-  if (plan.music === false) musicFor = Object.fromEntries(PARTS.map((k) => [k, null]));
-  else if (typeof plan.music === 'string') musicFor = Object.fromEntries(PARTS.map((k) => [k, pick(plan.music)]));
-  else if (plan.music && typeof plan.music === 'object') for (const k of PARTS) if (k in plan.music) musicFor[k] = pick(plan.music[k], k);
-  for (const k of ['片头', '片尾']) if (trackByPath(musicFor[k])?.kind === '过渡音') throw new Error(`${k}用了过渡音"${trackByPath(musicFor[k]).id}"：过渡音只有几秒，只能用在"过渡"。`);
+  mus = resolveMusic(plan, { work: e.work, assets: show?.assets, showMusic: () => showAsset(show, '配乐') });
   for (const [k, a] of [['片头', intro], ['片尾', outro]]) if (a && !(a.dur > 0.5 && a.dur < 180)) throw new Error(`节目档案的${k} ${path.basename(a.file)} 长 ${a.dur.toFixed(1)} 秒，读不出来或太长（片头片尾一般几秒到一两分钟）。`);
 } catch (err) { console.error(err.message); process.exit(1); }
-const TAIL = outro ? 1.0 + outro.dur + 2.0 : GAP.tail; // 人声结束之后还有多长
+const musicFor = Object.fromEntries(PARTS.map((k) => [k, mus[k]?.file ?? null]));
+// 人声结束之后还有多长：有节目片尾就放片尾；有片尾音乐就留 11 秒给它；都没有只留 2 秒
+const TAIL = outro ? 1.0 + outro.dur + 2.0 : musicFor['片尾'] ? GAP.tail : 2.0;
 if (!fs.existsSync(e.planMd) || fs.statSync(e.planMd).mtimeMs < fs.statSync(e.plan).mtimeMs) { console.error('编排方案.json 改过之后还没检查。先运行 node tools/podcast/plan.mjs <节目目录>'); process.exit(1); }
 if (!fs.existsSync(e.wav44)) { console.error('制作文件里没有转好的录音。先运行 node tools/podcast/transcribe.mjs <节目目录>'); process.exit(1); }
 const byId = new Map(full.map((s) => [s.id, s]));
@@ -266,7 +251,8 @@ function render(processed, outDir) {
     plan: fileSha(e.plan), processed, voiceEnd: +voiceEnd.toFixed(3), tail: +TAIL.toFixed(3), length: +(voiceEnd + TAIL).toFixed(3), lufs: LUFS,
     show: show?.file ?? null, showSha: show ? fileSha(show.file) : null, musicFile: pieces.length ? (pieces[0].file === MUSIC ? 'default' : path.basename(pieces[0].file)) : null, musicGain,
     // 用到的每首曲子：哪一处、文件、曲库编号和署名（曲库外的文件没有署名，notes 会提醒）
-    musicTracks: [...new Set(pieces.map((p) => p.file))].map((f) => { const t = trackByPath(f); return { parts: [...new Set(pieces.filter((p) => p.file === f).map((p) => p.part))], file: f === MUSIC ? 'default' : path.basename(f), id: t?.id ?? null, credit: t ? credit(t) : null }; }),
+    // from：方案（这期编排方案指定）/ 档案（节目档案的"配乐"）/ 默认
+    musicTracks: [...new Set(pieces.map((p) => p.file))].map((f) => { const t = trackByPath(f); const k = PARTS.find((x) => mus[x]?.file === f); return { parts: [...new Set(pieces.filter((p) => p.file === f).map((p) => p.part))], file: f === MUSIC ? 'default' : path.basename(f), from: mus[k]?.from ?? null, id: t?.id ?? null, credit: t ? credit(t) : null }; }),
     assets: assets.map((a) => ({ name: a.name, file: path.basename(a.file), at: a.at, dur: +a.dur.toFixed(3) })), music: pieces.map((p) => ({ ...p, file: path.basename(p.file) })), items: edl,
   });
   fs.writeFileSync(path.join(outDir, '章节目录.txt'), chapters.map((c) => `${fmt(c.t)} ${c.name}`).join('\n') + '\n', 'utf8');
@@ -307,8 +293,10 @@ try {
     console.log(`剪精编版（${processed ? '带人声处理' : '不做人声处理'}）……`);
     const r = render(processed, e.out);
     const m = measure(r.mp3);
-    const mName = (f) => (!f ? '无' : trackByPath(f) ? `库:${trackByPath(f).id}` : path.basename(f));
-    console.log(`配乐：${PARTS.map((k) => `${k} ${k === '片尾' && outro ? '（用节目片尾）' : mName(musicFor[k])}`).join('，')}`);
+    // 只写真放进去的：有节目片头或者没有钩子时不铺片头音乐，有节目片尾时不铺片尾音乐，只有一个板块时没有过渡
+    const nBodies = plan.sections.filter((s) => s.kind !== 'hook').length;
+    const why = { 片头: intro ? '用节目片头，不铺音乐' : !hookSecs.length ? '没有片头钩子，不铺音乐' : null, 过渡: nBodies < 2 ? '只有一个板块，没有过渡' : null, 片尾: outro ? '用节目片尾，不铺音乐' : null };
+    console.log(`配乐：${PARTS.map((k) => `${k} ${why[k] ? `（${why[k]}）` : musicName(mus[k])}`).join('；')}`);
     if (show) console.log(`节目档案：${[intro && `片头 ${path.basename(intro.file)}`, outro && `片尾 ${path.basename(outro.file)}`, `响度 ${LUFS} LUFS`].filter(Boolean).join('，')}`);
     console.log(`精编版：${fmt(r.voiceEnd + TAIL)}，${r.edl.filter((x) => x.kind === 'clip').length} 段，响度 ${m.lufs} LUFS，峰值 ${m.peak} dBFS，音量起伏 ${m.lra} LU${processed ? `，调平削顶 ${r.clipped} 个采样点` : ''}`);
     console.log(r.chapters.map((c) => `  ${fmt(c.t)} ${c.name}`).join('\n'));

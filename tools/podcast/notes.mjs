@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { episode, mustExist, loadFull, readJson, readInfo, infoBlank, fmt, MUSIC } from '../lib/podcast.mjs';
 import { loadShow } from '../lib/show.mjs';
+import { DEFAULT_CREDIT } from '../lib/library.mjs';
 
 const dir = process.argv[2];
 if (!dir) { console.error('用法: node tools/podcast/notes.mjs <节目目录>'); process.exit(2); }
@@ -55,11 +56,19 @@ md.push('## 时间轴', '', ...lines, '');
 const extra = [];
 const show = loadShow(e);
 if (edl.musicTracks?.length) {
-  // 曲库里的曲子自带署名；曲库外的（节目自己的）用档案的"配乐署名"，没写就提醒
-  const own = edl.musicTracks.filter((t) => !t.credit);
-  const credits = [...edl.musicTracks.filter((t) => t.credit).map((t) => t.credit), ...(own.length && show?.get('配乐署名') ? [show.get('配乐署名')] : [])];
-  if (credits.length) extra.push(`配乐：${credits.join('；')}`);
-  if (own.length && !show?.get('配乐署名')) todo.push(`配乐用的是节目自己的 ${own.map((t) => t.file).join('、')}，节目档案里没写"配乐署名"：确认有授权，需要署名的补上`);
+  // 曲库里的曲子自带署名；默认那首（Aurora）用固定署名；节目档案里那首用档案的"配乐署名"；
+  // 这期编排方案里直接写的别的文件，没有地方记授权，一律列进"发布前要确认"
+  const credits = [], ask = [];
+  for (const t of edl.musicTracks) {
+    if (t.credit) credits.push(t.credit);
+    else if (t.file === 'default') credits.push(DEFAULT_CREDIT);
+    else if (t.from === '档案' && show?.get('配乐署名')) credits.push(show.get('配乐署名'));
+    else ask.push(t);
+  }
+  if (credits.length) extra.push(`配乐：${[...new Set(credits)].join('；')}`);
+  for (const t of ask) todo.push(t.from === '档案'
+    ? `配乐用的是节目自己的 ${t.file}，节目档案里没写"配乐署名"：确认有授权，需要署名的补上`
+    : `这期配乐用了 ${t.file}（编排方案里指定的，不在曲库里）：确认有授权，需要署名的写进简介`);
 } else if (edl.music?.length && (edl.musicFile ?? 'default') === 'default' && fs.existsSync(MUSIC)) extra.push('配乐：Aurora by Trex0n（CC0，来自 OpenGameArt）');
 else if (edl.music?.length) {
   const credit = show?.get('配乐署名');

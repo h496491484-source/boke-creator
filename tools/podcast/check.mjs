@@ -33,7 +33,8 @@ try {
   add('音量起伏', m.lra <= 10 ? '通过' : '提示', `${m.lra} LU${m.lra > 10 ? '，偏大，听感忽大忽小' : ''}`);
   const wantLen = edl.length ?? edl.voiceEnd + 11, got = duration(mp3);
   add('时长', Math.abs(got - wantLen) < 1.5 ? '通过' : '未通过', `${fmt(got)}（剪辑表算出来 ${fmt(wantLen)}）`);
-  if (edl.music?.length || edl.assets?.length) {
+  // 只有真放了片尾音乐，或者有节目片尾时才测（只关掉片尾音乐时，结尾本来就是安静的）
+  if (edl.music?.some((p) => (p.part ?? '片尾') === '片尾' && p.at >= edl.voiceEnd - 5) || edl.assets?.some((a) => a.name === 'outro')) {
     const tail = measure(mp3, { ss: edl.voiceEnd + 1.5, t: 3 });
     add('片尾', tail.lufs > -40 ? '通过' : '未通过', `人声结束后 ${tail.lufs} LUFS`);
   }

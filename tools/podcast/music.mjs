@@ -7,12 +7,16 @@
 
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { loadLibrary } from '../lib/library.mjs';
+import { loadLibrary, LIB_FILE } from '../lib/library.mjs';
 import { duration, fmt } from '../lib/podcast.mjs';
 
 const args = process.argv.slice(2);
-const lib = loadLibrary();
-if (!lib.length) { console.log('曲库是空的，只有默认配乐（Aurora）。'); process.exit(0); }
+let lib;
+try { lib = loadLibrary(); } catch (err) { console.error(err.message); process.exit(1); }
+if (!lib.length) {
+  if (args.includes('--check')) { console.error(`没有曲库文件 ${LIB_FILE}，或者里面一首都没有。`); process.exit(1); }
+  console.log('曲库是空的，只有默认配乐（Aurora）。'); process.exit(0);
+}
 
 if (args.includes('--check')) {
   let bad = 0;

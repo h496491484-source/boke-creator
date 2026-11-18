@@ -12,13 +12,18 @@ import { ROOT } from './env.mjs';
 
 export const LIB_DIR = path.join(ROOT, 'template', '配乐');
 export const LIB_FILE = path.join(LIB_DIR, '曲库.json');
+export const DEFAULT_MUSIC = path.join(LIB_DIR, 'aurora_cc0.mp3');
+export const PARTS = ['片头', '过渡', '片尾'];
 
 let cache = null;
+// 没有曲库文件：当作空曲库（只有默认配乐）。文件在、但读不出来（比如手改时多了个逗号）：报错，不悄悄当成空的
 export function loadLibrary() {
   if (cache) return cache;
-  let j = { tracks: [] };
-  try { j = JSON.parse(fs.readFileSync(LIB_FILE, 'utf8')); } catch { /* 没有曲库：只有默认配乐 */ }
-  cache = (j.tracks ?? []).map((t) => ({ ...t, path: path.join(LIB_DIR, t.file) }));
+  if (!fs.existsSync(LIB_FILE)) return (cache = []);
+  let j;
+  try { j = JSON.parse(fs.readFileSync(LIB_FILE, 'utf8')); } catch (err) { throw new Error(`曲库文件 ${LIB_FILE} 读不出来（${err.message}）。改回能读的 JSON，或者重新解压技能包。`); }
+  if (!Array.isArray(j.tracks)) throw new Error(`曲库文件 ${LIB_FILE} 里没有 tracks 列表。`);
+  cache = j.tracks.map((t) => ({ ...t, path: path.join(LIB_DIR, t.file) }));
   return cache;
 }
 
@@ -42,3 +47,52 @@ export function credit(t) {
   const host = (() => { try { return new URL(t.source).host.replace(/^www\./, ''); } catch { return ''; } })();
   return `${t.title} by ${t.author}（${t.license}${host ? `，来自 ${host}` : ''}）`;
 }
+export const DEFAULT_CREDIT = 'Aurora by Trex0n（CC0，来自 OpenGameArt）';
+
+const OFF = /^(无|没有|不要|不加)$/;
+const entry = (file, from) => (file ? { file, from, track: trackByPath(file) } : null);
+
+// 这一期三处各用哪首。plan.mjs 和 build.mjs 都用它，规则只有这一份：
+//   编排方案.json 的 music：false 三处都不要；"库:<id>" / "默认" / 文件名 三处都用它；
+//   { "片头": …, "过渡": …, "片尾": … } 分开写（每处可以写 false），没写的那处照节目档案的"配乐"。
+//   节目档案只在真有一处要用它时才去读（档案里写的文件不在了，而这期三处都自己指定了，不受影响）。
+// 返回 { 片头, 过渡, 片尾 }，每处是 { file, from: '方案'|'档案'|'默认', track } 或 null。
+// showMusic：() => 档案"配乐"解析出的值（'default' / null / 路径），由调用方传进来（show.mjs 依赖本文件，不反过来引用）。
+export function resolveMusic(plan, { work, assets, showMusic }) {
+  const m = plan?.music;
+  let given;
+  if (m === undefined || m === null) given = {};
+  else if (m === false || typeof m === 'string') given = Object.fromEntries(PARTS.map((k) => [k, m]));
+  else if (typeof m === 'object' && !Array.isArray(m)) {
+    const bad = Object.keys(m).filter((k) => !PARTS.includes(k));
+    if (bad.length) throw new Error(`music 里的"${bad.join('、')}"不认识，只能写 片头、过渡、片尾（三处都一样就直接写 "music": "库:<编号>"）`);
+    given = m;
+  } else throw new Error('music 写法不对：写 false、"库:<编号>"，或者分开写 {"片头": "库:…", "过渡": "库:…", "片尾": "库:…"}');
+
+  const pick = (v, k) => {
+    const where = `music${typeof m === 'object' && m ? `.${k}` : ''}`;
+    if (v === false || (typeof v === 'string' && OFF.test(v.trim()))) return null;
+    if (typeof v !== 'string' || !v.trim()) throw new Error(`${where} 写的是 ${JSON.stringify(v)}：要写 false、"库:<编号>"、"默认"或者音频文件名`);
+    if (/^(默认|自带)$/.test(v.trim())) return entry(fs.existsSync(DEFAULT_MUSIC) ? DEFAULT_MUSIC : null, '默认');
+    if (isLibRef(v)) return entry(libTrack(v).path, '方案');
+    const hit = [path.resolve(work, v), assets && path.resolve(assets, v)].filter(Boolean).find((p) => fs.existsSync(p) && fs.statSync(p).isFile());
+    if (hit) return entry(hit, '方案');
+    const lib = loadLibrary().find((t) => t.id === v.trim());
+    throw new Error(`${where} 写的是"${v}"：${lib ? `是不是要写"库:${lib.id}"？` : '既不是"库:<编号>"，也找不到这个文件（放在节目目录或节目档案的 素材/ 里）。'}`);
+  };
+  let sm; // 节目档案的配乐，用到才读
+  const fromShow = () => {
+    sm ??= { v: showMusic() };
+    if (sm.v === 'default') return entry(fs.existsSync(DEFAULT_MUSIC) ? DEFAULT_MUSIC : null, '默认');
+    return entry(sm.v, '档案');
+  };
+  const out = {};
+  for (const k of PARTS) {
+    out[k] = k in given ? pick(given[k], k) : fromShow();
+    if (out[k]?.track?.kind === '过渡音' && k !== '过渡') throw new Error(`${k}用了过渡音"${out[k].track.id}"：过渡音只有几秒，只能用在"过渡"`);
+  }
+  return out;
+}
+
+// 给人看的名字
+export const musicName = (x) => (!x ? '不要' : x.track ? `${x.track.title}（库:${x.track.id}${x.track.mood?.length ? `，${x.track.mood.join('/')}` : ''}${x.track.kind === '过渡音' ? '，过渡音' : ''}）` : path.basename(x.file));

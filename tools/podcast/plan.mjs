@@ -11,7 +11,8 @@
 
 import fs from 'node:fs';
 import { episode, mustExist, loadFull, readJson, readInfo, findInSentence, fmt, mins } from '../lib/podcast.mjs';
-import { isLibRef, libTrack } from '../lib/library.mjs';
+import { PARTS, resolveMusic, musicName } from '../lib/library.mjs';
+import { loadShow, showAsset } from '../lib/show.mjs';
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith('--'));
@@ -68,31 +69,20 @@ if (!errors.length) {
   for (const h of parts.filter((x) => x.hook)) if (h.end - h.start > 25) warns.push(`${h.where} 有 ${Math.round(h.end - h.start)} 秒，片头钩子每句最好不超过 20 秒`);
 }
 
-// ---- 配乐：music 写了就核对曲库编号（build.mjs 按同样的规则解析） ----
-let musicLine = '配乐：照节目档案（没有档案就用默认的 Aurora）';
-const describe = (v) => {
-  if (v === false || /^(无|没有|不要|不加)$/.test(String(v))) return '不要';
-  if (!isLibRef(v)) return String(v);
-  const t = libTrack(v);
-  return `${t.title}（库:${t.id}，${(t.mood ?? []).join('/')}${t.kind === '过渡音' ? '，过渡音' : ''}）`;
-};
-if (plan.music === false) musicLine = '配乐：这期不要';
-else if (plan.music != null) {
-  const items = typeof plan.music === 'string' ? { 三处: plan.music } : plan.music;
-  if (typeof items !== 'object') errors.push('music 写法不对：写 false、"库:<编号>"，或者 {"片头": "库:…", "过渡": "库:…", "片尾": "库:…"}');
-  else {
-    const said = [];
-    for (const [k, v] of Object.entries(items)) {
-      if (!['三处', '片头', '过渡', '片尾'].includes(k)) { errors.push(`music 里的"${k}"不认识，只能写 片头、过渡、片尾`); continue; }
-      try {
-        if (isLibRef(v) && libTrack(v).kind === '过渡音' && k !== '过渡') errors.push(`music.${k} 用了过渡音 ${v}：过渡音只有几秒，只能用在"过渡"`);
-        said.push(`${k} ${describe(v)}`);
-      } catch (err) { errors.push(`music${k === '三处' ? '' : `.${k}`}：${err.message}`); }
-    }
-    musicLine = `配乐：${said.join('；')}${plan.musicWhy ? `。为什么：${plan.musicWhy}` : ''}`;
-    if (!plan.musicWhy) warns.push('选了配乐但没写为什么（musicWhy）：一句话说清这期为什么配这首，给主理人看');
-  }
-}
+// ---- 配乐：和 build.mjs 用同一个解析（lib/library.mjs 的 resolveMusic），这里就把写错的拦下来 ----
+let musicLine = '', mus = null, hasOutro = false;
+try {
+  const show = loadShow(e);
+  const hasIntro = !!showAsset(show, '片头');
+  hasOutro = !!showAsset(show, '片尾');
+  mus = resolveMusic(plan, { work: e.work, assets: show?.assets, showMusic: () => showAsset(show, '配乐') });
+  // 只写真会放进去的：有节目片头或没有钩子时不铺片头音乐，有节目片尾时不铺片尾音乐，只有一个板块时没有过渡
+  const nBodies = plan.sections.filter((s) => s.kind !== 'hook').length, nHooks = plan.sections.length - nBodies;
+  const why = { 片头: hasIntro ? '用节目片头，不铺音乐' : !nHooks ? '没有片头钩子，不铺音乐' : null, 过渡: nBodies < 2 ? '只有一个板块，没有过渡' : null, 片尾: hasOutro ? '用节目片尾，不铺音乐' : null };
+  const src = { 方案: '这期选的', 档案: '照节目档案', 默认: '默认' };
+  musicLine = `配乐：${PARTS.map((k) => `${k} ${why[k] ? `（${why[k]}）` : `${musicName(mus[k])}${mus[k] ? `，${src[mus[k].from]}` : ''}`}`).join('；')}${plan.musicWhy ? `。为什么：${plan.musicWhy}` : ''}`;
+  if (plan.music != null && plan.music !== false && !plan.musicWhy) warns.push('选了配乐但没写为什么（musicWhy）：一句话说清这期为什么配这首，给主理人看');
+} catch (err) { errors.push(`配乐：${err.message}`); }
 
 if (errors.length) {
   console.error(`编排方案有 ${errors.length} 处要改：\n${errors.map((x) => '  · ' + x).join('\n')}`);
@@ -118,7 +108,7 @@ if (noWhy.length) warns.push(`${noWhy.length} 段删减没写原因（${noWhy.sl
 const nBody = new Set(parts.filter((x) => !x.hook).map((x) => x.si)).size;
 const nHook = parts.filter((x) => x.hook).length;
 const speech = parts.reduce((s, x) => s + x.dur, 0);
-const pack = (nHook ? PKG.hookLead + PKG.afterHook + PKG.betweenQuotes * (nHook - 1) : 0) + PKG.section * Math.max(0, nBody - 1) + PKG.tail;
+const pack = (nHook ? PKG.hookLead + PKG.afterHook + PKG.betweenQuotes * (nHook - 1) : 0) + PKG.section * Math.max(0, nBody - 1) + (hasOutro || mus?.['片尾'] ? PKG.tail : 2); // 片尾没音乐也没节目片尾：只留 2 秒，和 build 一致
 const totalLen = full.at(-1).end;
 const est = speech + pack;
 const target = (readInfo(e)['目标时长'] ?? '').match(/\d+(\.\d+)?/g)?.map(Number);
