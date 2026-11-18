@@ -40,10 +40,12 @@ for (const sec of plan.sections) {
 const todo = [];
 if (infoBlank(info['录音是否完整']) || /不确定|否|不是|没/.test(info['录音是否完整'] ?? '')) todo.push('录音是否完整还没确认：确认前不要写"共录了多久"之类的话');
 if (infoBlank(info['本期主题']) || /不确定/.test(info['本期主题'] ?? '')) todo.push('本期主题的原话还没确认');
-if (infoBlank(info['嘉宾是否同意']) || /不确定|否|没/.test(info['嘉宾是否同意'] ?? '')) todo.push('参与者是否同意剪辑发布还没确认');
+const solo = /单人|一个人|独白|^1$|^一$/.test((info['嘉宾'] ?? '').trim());
+const skipped = readJson(e.state, {}).confirmed?.['认人']?.skipped;
+if (!solo && (infoBlank(info['嘉宾是否同意']) || /不确定|否|没/.test(info['嘉宾是否同意'] ?? ''))) todo.push('参与者是否同意剪辑发布还没确认');
 const names = [...new Set(full.map((s) => s.speaker).filter(Boolean))];
 const named = new Set(full.filter((s) => s.name).map((s) => s.speaker));
-if (names.length && named.size < names.length) todo.push(`说话人还有 ${names.length - named.size} 个编号没对上人（说话人.md）：简介里提到具体的人之前先确认`);
+if (!solo && !skipped && names.length > 1 && named.size < names.length) todo.push(`说话人还有 ${names.length - named.size} 个编号没对上人（说话人.md）：简介里提到具体的人之前先确认`);
 
 const md = [`# 节目简介（草稿）`, '', `**标题**：${plan.title ?? '（待定）'}`, ''];
 if (!infoBlank(info['节目名'])) md.push(`**节目**：${info['节目名']}`, '');

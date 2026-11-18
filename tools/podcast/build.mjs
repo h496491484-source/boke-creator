@@ -231,7 +231,8 @@ try {
     }
     const wa = measure(A.mp3), wb = measure(B.mp3);
     console.log(`整期音量起伏：处理前 ${wa.lra} LU，处理后 ${wb.lra} LU。调平时削顶 ${B.clipped} 个采样点。`);
-    console.log('对比文件在 处理前后对比/。请本人听"先A后B"那两个，选处理还是不处理（编排方案.json 的 voice 写 "processed" 或 "raw"），再确认"声音"这一步。');
+    console.log(`对比文件在 处理前后对比/。请本人听 ${picks.length} 个"先A后B"文件，`
+      + '选处理还是不处理（编排方案.json 的 voice 写 "processed" 或 "raw"），再确认"声音"这一步。');
   } else {
     const processed = plan.voice !== 'raw';
     console.log(`剪精编版（${processed ? '带人声处理' : '不做人声处理'}）……`);
