@@ -9,7 +9,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { relaunchOnMac, loadSherpa, asrModel, needPodcastModels, pmPath, threads, episode, mustExist, recordings, ff, writeJson, readJson, RATE, RATE16, fmt, mins } from '../lib/podcast.mjs';
+import { relaunchOnMac, loadSherpa, asrModel, needPodcastModels, pmPath, threads, episode, mustExist, recordings, recordingMode, fileMap, lookupFile, trackWav, duration, ff, writeJson, readJson, RATE, RATE16, fmt, mins } from '../lib/podcast.mjs';
 import { buildFull } from './fulltext.mjs';
 
 relaunchOnMac();
@@ -27,16 +27,33 @@ try {
   if (!recs.length) throw new Error('节目目录第一层没有录音文件。把原始录音放进来，或用 new.mjs 拷进来。');
   fs.mkdirSync(e.mid, { recursive: true });
 
-  // 1. 拼接 + 转格式（几段录音按顺序首尾相接）
-  const stamp = recs.map((f) => `${path.basename(f)}:${fs.statSync(f).size}`).join('|');
+  // 1. 合成一条完整录音：前后接着录的首尾拼接；多轨（每人一个文件、同时录）对齐后混音，并把每条轨留一份给认人用
+  const mode = recs.length > 1 ? recordingMode(e) : 'single';
+  if (!mode) {
+    const lens = recs.map((f) => duration(f));
+    const similar = Math.max(...lens) - Math.min(...lens) < Math.max(...lens) * 0.05;
+    throw new Error(`有 ${recs.length} 个录音文件（${recs.map((f, i) => `${path.basename(f)} ${fmt(lens[i])}`).join('、')}），先在 节目信息.md 写"录音方式"：前后接着录的，还是多轨（每人一个文件、同时录）。${similar ? '这几个文件长度几乎一样，很可能是多轨。' : ''}`);
+  }
+  const offsets = fileMap(e, '音轨偏移');
+  const stamp = `${mode}|` + recs.map((f) => `${path.basename(f)}:${fs.statSync(f).size}:${lookupFile(offsets, f) ?? ''}`).join('|');
   const meta = readJson(path.join(e.mid, '录音.json'), {});
   if (force || meta.stamp !== stamp || !fs.existsSync(e.wav44) || !fs.existsSync(e.wav16)) {
-    console.log(`拼接并转换 ${recs.length} 个录音文件：${recs.map((f) => path.basename(f)).join(' + ')}`);
     const inputs = recs.flatMap((f) => ['-i', f]);
-    const cat = `${recs.map((_, i) => `[${i}:a]aresample=${RATE},aformat=channel_layouts=stereo[a${i}]`).join(';')};${recs.map((_, i) => `[a${i}]`).join('')}concat=n=${recs.length}:v=0:a=1[o]`;
-    ff(['-v', 'error', ...inputs, '-filter_complex', cat, '-map', '[o]', '-c:a', 'pcm_s16le', e.wav44], '拼接录音');
+    const norm = (i) => `[${i}:a]aresample=${RATE},aformat=channel_layouts=stereo`;
+    if (mode === 'multitrack') {
+      console.log(`多轨混音 ${recs.length} 条音轨：${recs.map((f) => path.basename(f)).join('、')}`);
+      const delay = (f) => { const s = Number(String(lookupFile(offsets, f) ?? '0').replace(/[^\d.+-]/g, '')) || 0; return s > 0 ? `,adelay=${Math.round(s * 1000)}:all=1` : s < 0 ? `,atrim=start=${-s},asetpts=PTS-STARTPTS` : ''; };
+      // 各轨直接相加（不按轨数压低），最后限幅防止几个人同时大声时削顶
+      const mix = `${recs.map((f, i) => `${norm(i)}${delay(f)}[a${i}]`).join(';')};${recs.map((_, i) => `[a${i}]`).join('')}amix=inputs=${recs.length}:normalize=0:duration=longest,alimiter=limit=0.95:level=false[o]`;
+      ff(['-v', 'error', ...inputs, '-filter_complex', mix, '-map', '[o]', '-c:a', 'pcm_s16le', e.wav44], '多轨混音');
+      recs.forEach((f, i) => ff(['-v', 'error', '-i', f, '-af', `aresample=${RATE16}${delay(f)}`, '-ac', 1, '-c:a', 'pcm_s16le', trackWav(e, i)], '转音轨'));
+    } else {
+      console.log(`${recs.length > 1 ? '拼接并' : ''}转换 ${recs.length} 个录音文件：${recs.map((f) => path.basename(f)).join(' + ')}`);
+      const cat = `${recs.map((_, i) => `${norm(i)}[a${i}]`).join(';')};${recs.map((_, i) => `[a${i}]`).join('')}concat=n=${recs.length}:v=0:a=1[o]`;
+      ff(['-v', 'error', ...inputs, '-filter_complex', cat, '-map', '[o]', '-c:a', 'pcm_s16le', e.wav44], '拼接录音');
+    }
     ff(['-v', 'error', '-i', e.wav44, '-ar', RATE16, '-ac', 1, '-c:a', 'pcm_s16le', e.wav16], '转 16k');
-    writeJson(path.join(e.mid, '录音.json'), { stamp, files: recs.map((f) => path.basename(f)) });
+    writeJson(path.join(e.mid, '录音.json'), { stamp, mode, files: recs.map((f) => path.basename(f)) });
     for (const f of [e.asr, e.diar, e.levels]) fs.rmSync(f, { force: true }); // 录音变了，后面的都作废
   }
   const samples = sherpa.readWave(e.wav16, false).samples;
@@ -99,5 +116,7 @@ try {
   const lv = readJson(e.levels);
   console.log(`全文：${r.sentences} 句，写到 全文.txt。录音总长 ${fmt(total)}。`);
   console.log(`音量：句与句之间的底噪约 ${lv.noiseDb} dB；各段响度 10%–90% 在 ${lv.spread[0]} 到 ${lv.spread[1]} dB 之间（差得越多，越需要分人调平）。`);
-  console.log('下一步：在后台跑 node tools/podcast/speakers.mjs <节目目录> 分说话人（要几分钟到十几分钟），同时读 全文.txt。');
+  console.log(mode === 'multitrack'
+    ? '下一步：运行 node tools/podcast/speakers.mjs <节目目录>，多轨按音轨认人，几秒钟就好。'
+    : '下一步：多人节目在后台跑 node tools/podcast/speakers.mjs <节目目录> 分说话人（要几分钟到十几分钟），同时读 全文.txt；单人节目跳过认人。');
 } catch (err) { console.error(err.message); process.exit(1); }

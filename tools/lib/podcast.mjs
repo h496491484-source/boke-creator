@@ -125,6 +125,25 @@ export function readInfo(e) {
 }
 export const infoBlank = (v) => !v || /^（.*）$/.test(v);
 
+// 录音方式：几个文件是"前后接着"录的（拼接），还是"多轨"（每人一个话筒、同时录，要对齐混音）
+export function recordingMode(e) {
+  const v = readInfo(e)['录音方式'] ?? '';
+  if (infoBlank(v)) return null; // 没填（模板里的提示文字本身就带"多轨"两个字）
+  if (/多轨|同时|每人一/.test(v)) return 'multitrack';
+  if (/前后|接着|分段|拼接|上下半/.test(v)) return 'sequential';
+  return null;
+}
+// "a.mp3=老王、b.mp3=小李" 这类"文件=值"的列表；文件名可以不带扩展名
+export function fileMap(e, field) {
+  const v = readInfo(e)[field];
+  const out = {};
+  if (infoBlank(v)) return out;
+  for (const kv of v.split(/[、,，;；]+/)) { const m = kv.match(/^\s*(.+?)\s*[=＝:：]\s*(.+?)\s*$/); if (m) out[m[1]] = m[2]; }
+  return out;
+}
+export const lookupFile = (map, file) => map[path.basename(file)] ?? map[path.parse(file).name];
+export const trackWav = (e, i) => path.join(e.mid, `音轨${i + 1}_16k.wav`);
+
 // 原始录音：第一层的音频文件；有几个时按 节目信息.md 的"录音顺序"，没写就按文件名
 export function recordings(e) {
   const files = fs.readdirSync(e.work).filter((n) => AUDIO.test(n) && n !== path.basename(e.rollcall));

@@ -74,6 +74,7 @@ let next;
 if (!recs.length) next = '把原始录音放进节目目录（或 new.mjs <节目目录> <录音文件>）';
 else if (!has(e.full)) next = '第 1 步：运行 transcribe.mjs 转写（同时和主理人填 节目信息.md）';
 else if (!ok('素材')) next = infoMissing.length ? `第 1 步：和主理人填 节目信息.md（还缺：${infoMissing.join('、')}），念给他确认后 --confirm 素材` : '第 1 步：把 节目信息.md 念给主理人确认，确认后 --confirm 素材';
+else if (!has(e.diar) && !ok('认人') && readJson(path.join(e.mid, '录音.json'), {}).mode === 'multitrack') next = '第 2 步：运行 speakers.mjs，多轨按音轨认人（几秒钟），称呼按"音轨对应"自动填';
 else if (!has(e.diar) && !ok('认人')) next = /^(1|一|1 ?人|一个人|单人|一人)$/.test((info['嘉宾'] ?? '').trim()) || /单人|一个人|独白/.test(info['嘉宾'] ?? '')
   ? '第 2 步：单人节目不用分说话人，运行 --skip 认人，然后读全文写编排方案'
   : '第 2 步：后台运行 speakers.mjs 分说话人（同时可以开始读全文、想编排）；单人节目直接 --skip 认人';

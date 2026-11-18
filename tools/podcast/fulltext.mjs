@@ -27,11 +27,14 @@ export function readNames(e) {
   return names;
 }
 
-export function speakerLabels(diar) {
+// 说话人分段的来源：'model'（声纹模型分的，要并掉碎片）或 'tracks'（多轨按音轨认的，每条轨就是一个人）
+export const diarSource = (e) => readJson(path.join(e.mid, '说话人来源.json'), { source: 'model' });
+
+export function speakerLabels(diar, minSeconds = MIN_SPEAKER_SECONDS) {
   const all = {};
   for (const d of diar) all[d.speaker] = (all[d.speaker] ?? 0) + d.end - d.start;
-  const major = Object.keys(all).filter((k) => all[k] >= MIN_SPEAKER_SECONDS).sort((a, b) => all[b] - all[a]);
-  return { segs: diar.filter((d) => all[d.speaker] >= MIN_SPEAKER_SECONDS), label: Object.fromEntries(major.map((k, i) => [k, String.fromCharCode(65 + i)])), total: Object.fromEntries(major.map((k) => [k, all[k]])), fragments: Object.keys(all).length - major.length };
+  const major = Object.keys(all).filter((k) => all[k] >= minSeconds).sort((a, b) => all[b] - all[a]);
+  return { segs: diar.filter((d) => all[d.speaker] >= minSeconds), label: Object.fromEntries(major.map((k, i) => [k, String.fromCharCode(65 + i)])), total: Object.fromEntries(major.map((k) => [k, all[k]])), fragments: Object.keys(all).length - major.length };
 }
 
 export function buildFull(dir) {
@@ -39,7 +42,7 @@ export function buildFull(dir) {
   const asr = readJson(e.asr, null);
   if (!asr) throw new Error('还没有识别结果。先运行 node tools/podcast/transcribe.mjs <节目目录>');
   const diarRaw = readJson(e.diar, null);
-  const { segs: dia, label } = diarRaw ? speakerLabels(diarRaw) : { segs: [], label: {} };
+  const { segs: dia, label } = diarRaw ? speakerLabels(diarRaw, diarSource(e).source === 'tracks' ? 3 : MIN_SPEAKER_SECONDS) : { segs: [], label: {} };
   const names = readNames(e);
 
   const speakerAt = (t) => {
