@@ -2,7 +2,7 @@
   "name": "boke-creator",
   "version": "0.3.0",
   "private": true,
-  "description": "播客后期技能：把一期播客原始录音剪成精编版；也能把一个观点做成竖屏口播视频。先运行 node tools/setup.mjs。",
+  "description": "播客制作人：把一期播客原始录音剪成精编版；也能把一个观点做成竖屏口播视频。先运行 node tools/setup.mjs。",
   "scripts": {
     "setup": "node tools/setup.mjs",
     "doctor": "node tools/doctor.mjs",
