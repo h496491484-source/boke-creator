@@ -25,7 +25,15 @@
 
 ## 安装
 
-1. 把整个 `boke-creator` 文件夹放到助手的技能目录。**用 zip 包**：在国内从 GitHub 克隆或一个个下载文件会被限速到很慢。
+**最省事：让助手自己装。** 把下面这段话原样发给你的 AI 助手：
+
+> 请从 https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/skill/boke-creator.zip 下载播客制作人技能（约 2 MB），解压到你的技能目录，解压后应该是 `技能目录/boke-creator/SKILL.md`，中间不要多套一层文件夹。然后用 boke-creator 技能帮我装好环境。
+
+这个链接在国内不用登录、不开代理就能下载，永远指向最新版。历史版本在[魔搭仓库](https://modelscope.cn/models/jimmy444629/boke-creator-models/files)的 `skill/` 文件夹里。
+
+**自己装：**
+
+1. 下载上面的 zip 包，把解压出来的 `boke-creator` 文件夹放到助手的技能目录。不要从 GitHub 克隆，在国内会被限速到很慢。
    - WorkBuddy：在技能页面导入这个文件夹或 zip 包；或者直接放到 `~/.workbuddy/skills/boke-creator/`（Windows 是 `C:\Users\你的用户名\.workbuddy\skills\boke-creator\`），重启 WorkBuddy。
    - 豆包专业版：切到"办公任务"模式，在技能管理里导入；或者放到 `~/.agents/skills/boke-creator/`。以豆包当前版本的说明为准。
    - Claude Code：`~/.claude/skills/boke-creator/`（Windows 是 `C:\Users\你的用户名\.claude\skills\boke-creator\`）
