@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { episode, readJson, writeJson, fmt, PUNCT } from '../lib/podcast.mjs';
+import { loadShow, applyFixes } from '../lib/show.mjs';
 
 const END = /^[。！？.!?]$/;
 export const MIN_SPEAKER_SECONDS = 40; // 总共说不到这么多秒的"说话人"多半是插话、附和、串音的碎片，并到相邻的人
@@ -88,6 +89,10 @@ export function buildFull(dir) {
     for (const c of s.cl) votes[c.speaker] = (votes[c.speaker] ?? 0) + c.toks.filter((t) => !PUNCT.test(t.t)).length;
     s.speaker = Object.entries(votes).sort((a, b) => b[1] - a[1])[0][0];
   }
+  // 常错词（节目档案里的）：按句替换，字的时间不变，句子编号也不变
+  const show = loadShow(e);
+  let fixed = 0;
+  if (show?.fixes.length) for (const s of sents) { const r = applyFixes(s.toks, show.fixes); s.toks = r.toks; fixed += r.n; }
   const full = sents.map((s, i) => ({
     id: i + 1, start: +s.start.toFixed(2), end: +s.end.toFixed(2), speaker: s.speaker || '', name: names[s.speaker] || '',
     text: s.toks.map((t) => t.t).join(''), toks: s.toks.map((t) => ({ t: t.t, s: t.s })),
@@ -105,7 +110,7 @@ export function buildFull(dir) {
   if (turn) lines.push(turn);
   const head = `# 全文（机器识别，错字没校）\n# 〔数字〕是句子编号，编排方案用它定位。${diarRaw ? 'A、B、C… 是机器分的说话人，A 说得最多；括号里是 说话人.md 里填的称呼。' : '还没分说话人。'}\n\n`;
   fs.writeFileSync(e.fullTxt, head + lines.map((t) => `[${fmt(t.start)}] ${who(t.s)}${t.parts.join('')}`).join('\n\n') + '\n', 'utf8');
-  return { sentences: full.length, turns: lines.length, speakers: Object.keys(label).length, named: Object.keys(names).length };
+  return { sentences: full.length, turns: lines.length, speakers: Object.keys(label).length, named: Object.keys(names).length, fixed };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -113,6 +118,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (!dir) { console.error('用法: node tools/podcast/fulltext.mjs <节目目录>'); process.exit(2); }
   try {
     const r = buildFull(dir);
-    console.log(`全文：${r.sentences} 句，${r.turns} 个发言段${r.speakers ? `，${r.speakers} 个说话人，已填称呼 ${r.named} 个` : ''}。写到 全文.txt / 全文.json`);
+    console.log(`全文：${r.sentences} 句，${r.turns} 个发言段${r.speakers ? `，${r.speakers} 个说话人，已填称呼 ${r.named} 个` : ''}${r.fixed ? `，按节目档案换了 ${r.fixed} 处常错词` : ''}。写到 全文.txt / 全文.json`);
   } catch (err) { console.error(err.message); process.exit(1); }
 }

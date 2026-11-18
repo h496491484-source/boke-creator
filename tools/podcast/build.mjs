@@ -7,11 +7,13 @@
 // 产物：精编版/（精编版.mp3、剪辑表.json、章节目录.txt），或 处理前后对比/。
 // 人声处理（2026-11-17 用真实节目调过，见 references/播客_人声处理.md）：
 //   ① 分人调平：每个识别段往全期中位响度拉 80%，最多 +8 / -5 dB，句间空隙取两边较小的增益（不把底噪拉上来），先整体让 9 dB 余量防削顶；
-//   ② 低切 80Hz + 轻度降噪（afftdn nr=8）；③ 轻度压缩 2.5:1。最后人声和成品都调到 -16 LUFS（两遍法，线性）。
+//   ② 低切 80Hz + 轻度降噪（afftdn nr=8）；③ 轻度压缩 2.5:1。最后人声和成品都调到 -16 LUFS（两遍法，线性；节目档案可以改）。
+// 节目档案（references/播客_节目档案.md）里写了片头、片尾就放进去（片头在钩子之后，片尾在正文之后），配乐可以换成节目自己的或不要。
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { episode, mustExist, loadFull, readJson, writeJson, ff, measure, fmt, fileSha, MUSIC, RATE, PUNCT, findInSentence } from '../lib/podcast.mjs';
+import { episode, mustExist, loadFull, readJson, writeJson, ff, measure, duration, fmt, fileSha, MUSIC, RATE, PUNCT, findInSentence } from '../lib/podcast.mjs';
+import { loadShow, showAsset, targetLufs } from '../lib/show.mjs';
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith('--'));
@@ -23,11 +25,24 @@ const GAP = { hookLead: 2.0, betweenQuotes: 0.7, afterHook: 2.5, section: 3.0, t
 const LONG_PAUSE = 0.9, PAD = { tail: 0.35, head: 0.25, edge: 0.2 }, FADE = 0.015;
 const FILLER = /^[呃嗯]$/;
 const PROC = { headroom: 9, gainMax: 8, cutMax: 5, amount: 0.8, ramp: 0.08, denoise: 'highpass=f=80,afftdn=nr=8:nf=-60:tn=1', comp: 'acompressor=threshold=-20dB:ratio=2.5:attack=10:release=180:knee=4' };
-const MUSIC_GAIN_DB = 2; // 配乐原曲约 -22 LUFS，单独响时到 -20 左右，比人声轻一点
+const MUSIC_BELOW_DB = 4; // 配乐单独响的时候比人声目标响度低这么多（自带的 Aurora 原曲约 -22 LUFS，+2 dB 到 -20）
 
 const full = loadFull(e);
 const plan = readJson(e.plan, null);
 if (!plan) { console.error('还没有 编排方案.json'); process.exit(1); }
+
+// 节目档案：片头、片尾（主理人自己的音频）、配乐、成品响度。没有档案就用默认（自带配乐、-16 LUFS、没有片头片尾）
+let show, LUFS, intro, outro, music;
+try {
+  show = loadShow(e);
+  LUFS = targetLufs(show);
+  const asset = (k) => { const p = showAsset(show, k); return p ? { file: p, dur: duration(p) } : null; };
+  intro = asset('片头'); outro = asset('片尾');
+  const m = plan.music === false ? null : showAsset(show, '配乐');
+  music = m === 'default' ? (fs.existsSync(MUSIC) ? MUSIC : null) : m;
+  for (const [k, a] of [['片头', intro], ['片尾', outro]]) if (a && !(a.dur > 0.5 && a.dur < 180)) throw new Error(`节目档案的${k} ${path.basename(a.file)} 长 ${a.dur.toFixed(1)} 秒，读不出来或太长（片头片尾一般几秒到一两分钟）。`);
+} catch (err) { console.error(err.message); process.exit(1); }
+const TAIL = outro ? 1.0 + outro.dur + 2.0 : GAP.tail; // 人声结束之后还有多长
 if (!fs.existsSync(e.planMd) || fs.statSync(e.planMd).mtimeMs < fs.statSync(e.plan).mtimeMs) { console.error('编排方案.json 改过之后还没检查。先运行 node tools/podcast/plan.mjs <节目目录>'); process.exit(1); }
 if (!fs.existsSync(e.wav44)) { console.error('制作文件里没有转好的录音。先运行 node tools/podcast/transcribe.mjs <节目目录>'); process.exit(1); }
 const byId = new Map(full.map((s) => [s.id, s]));
@@ -84,8 +99,10 @@ for (const sec of hookSecs) {
     if (k) timeline.push({ kind: 'gap', dur: GAP.betweenQuotes, section: sec.name });
     for (const c of clipsOf(partSpans(p))) timeline.push({ kind: 'clip', ...c, section: sec.name, label: p.label });
   });
-  timeline.push({ kind: 'gap', dur: GAP.afterHook, section: sec.name, music: 'swell' });
+  if (intro) timeline.push({ kind: 'gap', dur: 0.8, section: sec.name }, { kind: 'gap', dur: intro.dur, section: sec.name, asset: 'intro' }, { kind: 'gap', dur: 1.0, section: sec.name });
+  else timeline.push({ kind: 'gap', dur: GAP.afterHook, section: sec.name, music: 'swell' });
 }
+if (intro && !hookSecs.length) timeline.push({ kind: 'gap', dur: intro.dur, section: '片头', asset: 'intro' }, { kind: 'gap', dur: 1.0, section: '片头' });
 let firstBody = true;
 for (const sec of plan.sections) {
   if (sec.kind === 'hook') continue;
@@ -140,6 +157,7 @@ function render(processed, outDir) {
       const n = Math.round(item.dur * RATE);
       fs.writeSync(wfd, Buffer.alloc(n * BPS));
       if (item.music) edl.push({ kind: item.music, at: +t.toFixed(3), dur: item.dur });
+      if (item.asset) edl.push({ kind: 'asset', name: item.asset, at: +t.toFixed(3), dur: item.dur });
       t += n / RATE; continue;
     }
     const f0 = Math.round(item.from * RATE), n = Math.round(item.to * RATE) - f0;
@@ -162,36 +180,51 @@ function render(processed, outDir) {
     t += n / RATE;
   }
   const voiceEnd = t;
-  fs.writeSync(wfd, Buffer.alloc(Math.round(GAP.tail * RATE) * BPS)); // 片尾音乐的位置（压低音乐那一步在人声结束时会截断，所以补静音）
+  if (outro) edl.push({ kind: 'asset', name: 'outro', at: +(voiceEnd + 1.0).toFixed(3), dur: outro.dur });
+  fs.writeSync(wfd, Buffer.alloc(Math.round(TAIL * RATE) * BPS)); // 片尾音乐 / 片尾的位置（压低音乐那一步在人声结束时会截断，所以补静音）
   fs.closeSync(wfd); fs.closeSync(fd);
 
   const loudnorm = (input, output, pre = '') => {
     const p = pre ? `${pre},` : '';
     const inA = ['-f', 's16le', '-ar', RATE, '-ac', CH, '-i', input]; // 原始 PCM 不带声道布局：滤镜末尾显式写 stereo（ffmpeg 6.0 不会自己猜，9.0 会）
-    const m = ff([...inA, '-af', `${p}loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json`, '-f', 'null', '-'], '响度测量');
+    const m = ff([...inA, '-af', `${p}loudnorm=I=${LUFS}:TP=-1.5:LRA=11:print_format=json`, '-f', 'null', '-'], '响度测量');
     const j = JSON.parse(m.slice(m.lastIndexOf('{'), m.lastIndexOf('}') + 1));
-    ff([...inA, '-af', `${p}loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${j.input_i}:measured_TP=${j.input_tp}:measured_LRA=${j.input_lra}:measured_thresh=${j.input_thresh}:offset=${j.target_offset}:linear=true,aresample=${RATE},aformat=sample_fmts=s16:channel_layouts=stereo`, '-c:a', 'pcm_s16le', output], '响度调整');
+    ff([...inA, '-af', `${p}loudnorm=I=${LUFS}:TP=-1.5:LRA=11:measured_I=${j.input_i}:measured_TP=${j.input_tp}:measured_LRA=${j.input_lra}:measured_thresh=${j.input_thresh}:offset=${j.target_offset}:linear=true,aresample=${RATE},aformat=sample_fmts=s16:channel_layouts=stereo`, '-c:a', 'pcm_s16le', output], '响度调整');
     return j;
   };
   const voiceWav = path.join(outDir, 'voice_norm.wav');
   loudnorm(voiceRaw, voiceWav, processed ? PROC.comp : '');
 
-  // 配乐：片头铺底、板块过渡、片尾；人声出现时自动压低
+  // 配乐：片头铺底、板块过渡、片尾（有主理人自己的片尾就不铺）；人声出现时自动压低。
+  // 片头、片尾（主理人自己的音频）：调到和人声一样响，放在留好的空当里，不压低
   const swell = edl.find((x) => x.kind === 'swell');
-  const pieces = [
+  const pieces = music ? [
     ...(swell ? [{ at: 0, from: 0, dur: swell.at + GAP.afterHook + 3.5, fin: 0.8, fout: 3.0 }] : []),
     ...edl.filter((x) => x.kind === 'transition').map((x, k) => ({ at: Math.max(0, x.at - 0.15), from: 12 + ((k * 9) % 55), dur: x.dur + 0.9, fin: 0.35, fout: 1.4 })),
-    { at: voiceEnd - 2.5, from: 30, dur: 13, fin: 1.5, fout: 5 },
-  ];
+    ...(outro ? [] : [{ at: voiceEnd - 2.5, from: 30, dur: 13, fin: 1.5, fout: 5 }]),
+  ] : [];
+  const assets = edl.filter((x) => x.kind === 'asset').map((x) => ({ ...x, file: (x.name === 'intro' ? intro : outro).file }));
+  const musicGain = pieces.length ? +((LUFS - MUSIC_BELOW_DB) - (measure(music).lufs ?? -22)).toFixed(1) : 0;
   const mixWav = path.join(outDir, 'mix.wav');
-  if (plan.music !== false && fs.existsSync(MUSIC)) {
+  if (pieces.length || assets.length) {
     const inputs = ['-i', voiceWav], filt = [];
+    let n = 1;
     pieces.forEach((p, k) => {
-      inputs.push('-stream_loop', '-1', '-i', MUSIC);
-      filt.push(`[${k + 1}:a]atrim=start=${p.from.toFixed(2)}:duration=${p.dur.toFixed(2)},asetpts=PTS-STARTPTS,aresample=${RATE},aformat=channel_layouts=stereo,volume=${MUSIC_GAIN_DB}dB,afade=t=in:d=${p.fin},afade=t=out:st=${(p.dur - p.fout).toFixed(2)}:d=${p.fout},adelay=${Math.round(p.at * 1000)}:all=1[m${k}]`);
+      inputs.push('-stream_loop', '-1', '-i', music);
+      filt.push(`[${n++}:a]atrim=start=${p.from.toFixed(2)}:duration=${p.dur.toFixed(2)},asetpts=PTS-STARTPTS,aresample=${RATE},aformat=channel_layouts=stereo,volume=${musicGain}dB,afade=t=in:d=${p.fin},afade=t=out:st=${(p.dur - p.fout).toFixed(2)}:d=${p.fout},adelay=${Math.round(p.at * 1000)}:all=1[m${k}]`);
     });
-    filt.push(`${pieces.map((_, k) => `[m${k}]`).join('')}amix=inputs=${pieces.length}:normalize=0:duration=longest[mus]`, '[0:a]asplit=2[v1][v2]',
-      '[mus][v1]sidechaincompress=threshold=0.012:ratio=12:attack=20:release=450:makeup=1[duck]', '[v2][duck]amix=inputs=2:normalize=0:duration=longest[mix]');
+    assets.forEach((a, k) => {
+      inputs.push('-i', a.file);
+      filt.push(`[${n++}:a]aresample=${RATE},aformat=channel_layouts=stereo,loudnorm=I=${LUFS}:TP=-2:LRA=11,aresample=${RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,atrim=duration=${a.dur.toFixed(2)},adelay=${Math.round(a.at * 1000)}:all=1[s${k}]`);
+    });
+    const parts = [];
+    if (pieces.length) {
+      filt.push(`${pieces.map((_, k) => `[m${k}]`).join('')}amix=inputs=${pieces.length}:normalize=0:duration=longest[mus]`, '[0:a]asplit=2[v1][v2]',
+        '[mus][v1]sidechaincompress=threshold=0.012:ratio=12:attack=20:release=450:makeup=1[duck]');
+      parts.push('[v2]', '[duck]');
+    } else parts.push('[0:a]');
+    parts.push(...assets.map((_, k) => `[s${k}]`));
+    filt.push(`${parts.join('')}amix=inputs=${parts.length}:normalize=0:duration=first[mix]`);
     ff(['-v', 'error', ...inputs, '-filter_complex', filt.join(';'), '-map', '[mix]', '-c:a', 'pcm_s16le', mixWav], '混音');
   } else fs.copyFileSync(voiceWav, mixWav);
 
@@ -201,7 +234,11 @@ function render(processed, outDir) {
   const mp3 = path.join(outDir, '精编版.mp3');
   ff(['-v', 'error', '-i', finalWav, '-c:a', 'libmp3lame', '-b:a', '160k', '-id3v2_version', '3', '-metadata', `title=${plan.title ?? '精编版'}`, mp3], '出 mp3');
   for (const f of [voiceRaw, voiceWav, mixWav, mixRaw, finalWav]) fs.rmSync(f, { force: true });
-  writeJson(path.join(outDir, '剪辑表.json'), { plan: fileSha(e.plan), processed, voiceEnd: +voiceEnd.toFixed(3), music: pieces, items: edl });
+  writeJson(path.join(outDir, '剪辑表.json'), {
+    plan: fileSha(e.plan), processed, voiceEnd: +voiceEnd.toFixed(3), tail: +TAIL.toFixed(3), length: +(voiceEnd + TAIL).toFixed(3), lufs: LUFS,
+    show: show?.file ?? null, showSha: show ? fileSha(show.file) : null, musicFile: pieces.length ? (music === MUSIC ? 'default' : path.basename(music)) : null, musicGain,
+    assets: assets.map((a) => ({ name: a.name, file: path.basename(a.file), at: a.at, dur: +a.dur.toFixed(3) })), music: pieces, items: edl,
+  });
   fs.writeFileSync(path.join(outDir, '章节目录.txt'), chapters.map((c) => `${fmt(c.t)} ${c.name}`).join('\n') + '\n', 'utf8');
   return { mp3, edl, voiceEnd, clipped, chapters };
 }
@@ -240,7 +277,8 @@ try {
     console.log(`剪精编版（${processed ? '带人声处理' : '不做人声处理'}）……`);
     const r = render(processed, e.out);
     const m = measure(r.mp3);
-    console.log(`精编版：${fmt(r.voiceEnd + GAP.tail)}，${r.edl.filter((x) => x.kind === 'clip').length} 段，响度 ${m.lufs} LUFS，峰值 ${m.peak} dBFS，音量起伏 ${m.lra} LU${processed ? `，调平削顶 ${r.clipped} 个采样点` : ''}`);
+    if (show) console.log(`节目档案：${[intro && `片头 ${path.basename(intro.file)}`, outro && `片尾 ${path.basename(outro.file)}`, `配乐 ${!music ? '无' : music === MUSIC ? '自带' : path.basename(music)}`, `响度 ${LUFS} LUFS`].filter(Boolean).join('，')}`);
+    console.log(`精编版：${fmt(r.voiceEnd + TAIL)}，${r.edl.filter((x) => x.kind === 'clip').length} 段，响度 ${m.lufs} LUFS，峰值 ${m.peak} dBFS，音量起伏 ${m.lra} LU${processed ? `，调平削顶 ${r.clipped} 个采样点` : ''}`);
     console.log(r.chapters.map((c) => `  ${fmt(c.t)} ${c.name}`).join('\n'));
     console.log('下一步：node tools/podcast/check.mjs <节目目录> 做机器检查，再 notes.mjs 出简介。');
   }

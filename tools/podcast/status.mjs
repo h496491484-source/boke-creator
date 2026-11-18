@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { episode, readJson, writeJson, readInfo, infoBlank, recordings, fileSha, fmt } from '../lib/podcast.mjs';
+import { loadShow, loadVoices } from '../lib/show.mjs';
 
 const STEPS = ['素材', '认人', '编排', '声音', '成品'];
 const args = process.argv.slice(2);
@@ -66,7 +67,8 @@ const ok = (s) => { const c = state.confirmed[s]; return !!c && (c.skipped || c.
 const stale = (s) => state.confirmed[s] && !ok(s);
 const edl = readJson(path.join(e.out, '剪辑表.json'), null);
 const report = readJson(path.join(e.out, '检查报告.json'), null);
-const buildFresh = edl && edl.plan === fileSha(e.plan) && edl.processed === (plan?.voice !== 'raw');
+const show = loadShow(e);
+const buildFresh = edl && edl.plan === fileSha(e.plan) && edl.processed === (plan?.voice !== 'raw') && (edl.showSha ?? null) === (show ? fileSha(show.file) : null);
 const reportFresh = report && report.mp3 === fileSha(mp3);
 const reportPassed = reportFresh && !report.results.some((r) => r.status === '未通过');
 
@@ -100,7 +102,13 @@ if (args.includes('--json')) { console.log(JSON.stringify(out, null, 2)); proces
 const yn = (b) => (b === true ? '有' : b === false ? '无' : b);
 console.log(`节目：${path.basename(e.work)}${info['节目名'] && !infoBlank(info['节目名']) ? `（${info['节目名']}）` : ''}　录音：${out.recordings.join('、') || '无'}`);
 console.log(`文件：${Object.entries(out.files).map(([k, v]) => `${k} ${yn(v)}`).join('　')}`);
-if (edl) console.log(`精编版：${fmt(edl.voiceEnd + 11)}${buildFresh ? '' : '（方案或人声处理选择改过，不是最新）'}`);
+if (edl) console.log(`精编版：${fmt(edl.length ?? edl.voiceEnd + 11)}${buildFresh ? '' : '（方案、人声处理选择或节目档案改过，不是最新）'}`);
 console.log(`确认：${STEPS.map((s) => `${s} ${out.confirmed[s]}`).join('　')}`);
 if (has(e.diar) && !ok('认人')) console.log('待办：请主理人听 声音点名.mp3、在 说话人.md 填称呼（不挡编排；简介里提到具体的人之前要认完）');
+if (show) {
+  const people = loadVoices(show).people ?? {};
+  const learned = Object.values(people).some((p) => p.episodes?.includes(path.basename(e.work)));
+  console.log(`节目档案：${show.file}（常错词 ${show.fixes.length} 条，记住的声纹 ${Object.keys(people).length} 人）`);
+  if (has(e.diar) && ok('认人') && !state.confirmed['认人'].skipped && !learned) console.log('待办：认人已确认，运行 show.mjs --learn <节目目录> 把主持人、常驻嘉宾的声纹记进档案，下一期自动认出');
+} else console.log('节目档案：没有（这档节目以后还剪的话，建一份：show.mjs --new <节目文件夹>）');
 console.log(`下一步：${next}`);

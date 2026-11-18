@@ -13,6 +13,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { relaunchOnMac, loadSherpa, needPodcastModels, pmPath, threads, episode, mustExist, readJson, writeJson, ff, fmt, RATE, trackWav, fileMap, lookupFile } from '../lib/podcast.mjs';
 import { buildFull, readNames, speakerLabels, diarSource } from './fulltext.mjs';
+import { loadShow, loadVoices, matchVoices } from '../lib/show.mjs';
+import { labelEmbeddings, similarPairs } from './voices.mjs';
 
 relaunchOnMac();
 const args = process.argv.slice(2);
@@ -89,6 +91,23 @@ try {
   }
   const order = Object.entries(label).sort((a, b) => a[1].localeCompare(b[1]));
   const names = readNames(e);
+
+  // 声纹：和节目档案里记住的人比（认出常驻主播），再看同一期里有没有两个编号其实是同一个人
+  const show = loadShow(e);
+  const voices = loadVoices(show);
+  const haveVoices = Object.keys(voices.people ?? {}).length > 0;
+  let matches = {}, pairs = [];
+  if (order.length && (haveVoices || (src.source !== 'tracks' && order.length > 1))) {
+    console.log(haveVoices ? `和节目档案里的 ${Object.keys(voices.people).length} 个人比声纹……` : '比对各编号的声纹……');
+    const labs = labelEmbeddings(e);
+    matches = Object.fromEntries(Object.entries(matchVoices(labs, voices)).sort((a, b) => a[0].localeCompare(b[0])));
+    if (src.source !== 'tracks') pairs = similarPairs(labs);
+  }
+  const voiceNote = [
+    ...(Object.values(matches).some((m) => m.sure) ? [`按节目档案的声纹认出：${Object.entries(matches).filter(([, m]) => m.sure).map(([l, m]) => `${l}=${m.name}（相似度 ${m.sim}）`).join('、')}。已预填，请听点名核对。`] : []),
+    ...(Object.values(matches).some((m) => !m.sure) ? [`声音有点像、没敢填的：${Object.entries(matches).filter(([, m]) => !m.sure).map(([l, m]) => `${l} 像 ${m.name}（${m.sim}）`).join('、')}。`] : []),
+    ...(pairs.length ? [`声音很像、可能是同一个人被拆成了两个编号：${pairs.map((p) => `${p.a} 和 ${p.b}（${p.sim}）`).join('、')}。是的话两行填同一个称呼。`] : []),
+  ];
   const rows = [], inputs = [];
   let at = 0;
   for (const [k, lab] of order) {
@@ -96,7 +115,7 @@ try {
     if (!best) continue;
     const dur = Math.min(10, best.end - best.start + 0.2);
     inputs.push({ ss: Math.max(0, best.start - 0.1), dur });
-    const name = names[lab] ?? (src.source === 'tracks' ? src.names?.[k] : '') ?? '';
+    const name = names[lab] ?? (src.source === 'tracks' && src.names?.[k] ? src.names[k] : matches[lab]?.sure ? matches[lab].name : '') ?? '';
     rows.push(`| ${fmt(at)} | ${lab} | ${(total[k] / 60).toFixed(1)} 分钟 | ${fmt(best.start)} | ${best.text.slice(0, 24).replace(/\|/g, '｜')}…… | ${name} |`);
     at += dur + 1.2;
   }
@@ -107,7 +126,7 @@ try {
 
 ${src.source === 'tracks' ? `多轨录音，按音轨认人：一条音轨就是一个人，共 ${rows.length} 条有人说话。称呼按 节目信息.md 的"音轨对应"预填，请核对。` : `机器分出了 ${rows.length} 个说话人编号（另有 ${fragments} 个插话碎片已并入相邻的人）。`}\`声音点名.mp3\` 按下表顺序每个编号放约 10 秒原声，请主理人听一遍，在"是谁"一栏填称呼。
 同一个人被拆成了两个编号的，两行填同一个称呼。认不出来的空着。填完运行 \`node tools/podcast/fulltext.mjs <节目目录>\`，称呼会换进全文。
-
+${voiceNote.length ? `\n${voiceNote.map((x) => `- ${x}`).join('\n')}\n` : ''}${show ? `\n认完人、确认之后，运行 \`node tools/podcast/show.mjs --learn <节目目录>\`，把主持人和常驻嘉宾的声纹记进节目档案，下一期自动认出。\n` : ''}
 | 点名音频里 | 编号 | 说了多久 | 这段原声在原录音 | 开头的话 | 是谁 |
 |---|---|---|---|---|---|
 ${rows.join('\n')}

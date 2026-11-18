@@ -27,14 +27,21 @@ try {
 
   // 1. 规格：响度、峰值、时长
   const m = measure(mp3);
-  add('响度', Math.abs(m.lufs + 16) <= 1 ? '通过' : '未通过', `${m.lufs} LUFS（目标 -16，±1）`);
+  const target = edl.lufs ?? -16;
+  add('响度', Math.abs(m.lufs - target) <= 1 ? '通过' : '未通过', `${m.lufs} LUFS（目标 ${target}，±1）`);
   add('峰值', m.peak <= -1 ? '通过' : '未通过', `${m.peak} dBFS（不超过 -1）`);
   add('音量起伏', m.lra <= 10 ? '通过' : '提示', `${m.lra} LU${m.lra > 10 ? '，偏大，听感忽大忽小' : ''}`);
-  const wantLen = edl.voiceEnd + 11, got = duration(mp3);
+  const wantLen = edl.length ?? edl.voiceEnd + 11, got = duration(mp3);
   add('时长', Math.abs(got - wantLen) < 1.5 ? '通过' : '未通过', `${fmt(got)}（剪辑表算出来 ${fmt(wantLen)}）`);
-  if (edl.music?.length) {
+  if (edl.music?.length || edl.assets?.length) {
     const tail = measure(mp3, { ss: edl.voiceEnd + 1.5, t: 3 });
-    add('片尾音乐', tail.lufs > -40 ? '通过' : '未通过', `人声结束后 ${tail.lufs} LUFS`);
+    add('片尾', tail.lufs > -40 ? '通过' : '未通过', `人声结束后 ${tail.lufs} LUFS`);
+  }
+  // 片头片尾（主理人自己的音频）真的放进去了、响度和人声差不多
+  for (const a of edl.assets ?? []) {
+    const x = measure(mp3, { ss: a.at, t: Math.min(a.dur, 20) });
+    const ok = x.lufs != null && Math.abs(x.lufs - target) <= 4;
+    add(a.name === 'intro' ? '片头' : '片尾', ok ? '通过' : '提示', `${a.file} 在 ${fmt(a.at)}，${x.lufs} LUFS${ok ? '' : '，和人声响度差得多，去听一下'}`);
   }
 
   // 2. 接缝：每段单独重新识别，比对段首段尾 6 个字

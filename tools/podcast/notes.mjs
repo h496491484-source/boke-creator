@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { episode, mustExist, loadFull, readJson, readInfo, infoBlank, fmt, MUSIC } from '../lib/podcast.mjs';
+import { loadShow } from '../lib/show.mjs';
 
 const dir = process.argv[2];
 if (!dir) { console.error('用法: node tools/podcast/notes.mjs <节目目录>'); process.exit(2); }
@@ -52,13 +53,19 @@ if (!infoBlank(info['节目名'])) md.push(`**节目**：${info['节目名']}`, 
 md.push(...(plan.intro?.length ? plan.intro.flatMap((p) => [p, '']) : ['（简介正文待写：在 编排方案.json 里加 intro，一段一个字符串）', '']));
 md.push('## 时间轴', '', ...lines, '');
 const extra = [];
-if (edl.music?.length && fs.existsSync(MUSIC)) extra.push('片头片尾音乐：Aurora by Trex0n（CC0，来自 OpenGameArt）');
+const show = loadShow(e);
+if (edl.music?.length && (edl.musicFile ?? 'default') === 'default' && fs.existsSync(MUSIC)) extra.push('配乐：Aurora by Trex0n（CC0，来自 OpenGameArt）');
+else if (edl.music?.length) {
+  const credit = show?.get('配乐署名');
+  if (credit) extra.push(`配乐：${credit}`);
+  else todo.push(`配乐用的是节目自己的 ${edl.musicFile}，节目档案里没写"配乐署名"：确认有授权，需要署名的补上`);
+}
 if (extra.length) md.push('## 其他', '', ...extra.map((x) => `- ${x}`), '');
 if (todo.length) md.push('## 发布前要确认（发布时删掉这一节）', '', ...todo.map((x) => `- ${x}`), '');
 fs.writeFileSync(path.join(e.out, '节目简介.md'), md.join('\n'), 'utf8');
 
 // 给主理人的反馈表：和精编版一起发过去，收回来的意见就是改编排、改技能的依据
-const len = fmt(edl.voiceEnd + 11), orig = fmt(full.at(-1).end);
+const len = fmt(edl.length ?? edl.voiceEnd + 11), orig = fmt(full.at(-1).end);
 fs.writeFileSync(path.join(e.out, '主理人反馈表.md'), `# 精编版反馈表
 
 节目：${info['节目名'] && !infoBlank(info['节目名']) ? info['节目名'] : path.basename(e.work)}　标题：${plan.title ?? '（待定）'}

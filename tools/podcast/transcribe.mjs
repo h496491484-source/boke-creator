@@ -114,7 +114,7 @@ try {
 
   const r = buildFull(dir);
   const lv = readJson(e.levels);
-  console.log(`全文：${r.sentences} 句，写到 全文.txt。录音总长 ${fmt(total)}。`);
+  console.log(`全文：${r.sentences} 句，写到 全文.txt。录音总长 ${fmt(total)}。${r.fixed ? `按节目档案换了 ${r.fixed} 处常错词。` : ''}`);
   console.log(`音量：句与句之间的底噪约 ${lv.noiseDb} dB；各段响度 10%–90% 在 ${lv.spread[0]} 到 ${lv.spread[1]} dB 之间（差得越多，越需要分人调平）。`);
   console.log(mode === 'multitrack'
     ? '下一步：运行 node tools/podcast/speakers.mjs <节目目录>，多轨按音轨认人，几秒钟就好。'
