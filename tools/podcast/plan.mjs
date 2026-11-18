@@ -11,6 +11,7 @@
 
 import fs from 'node:fs';
 import { episode, mustExist, loadFull, readJson, readInfo, findInSentence, fmt, mins } from '../lib/podcast.mjs';
+import { isLibRef, libTrack } from '../lib/library.mjs';
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith('--'));
@@ -67,6 +68,32 @@ if (!errors.length) {
   for (const h of parts.filter((x) => x.hook)) if (h.end - h.start > 25) warns.push(`${h.where} 有 ${Math.round(h.end - h.start)} 秒，片头钩子每句最好不超过 20 秒`);
 }
 
+// ---- 配乐：music 写了就核对曲库编号（build.mjs 按同样的规则解析） ----
+let musicLine = '配乐：照节目档案（没有档案就用默认的 Aurora）';
+const describe = (v) => {
+  if (v === false || /^(无|没有|不要|不加)$/.test(String(v))) return '不要';
+  if (!isLibRef(v)) return String(v);
+  const t = libTrack(v);
+  return `${t.title}（库:${t.id}，${(t.mood ?? []).join('/')}${t.kind === '过渡音' ? '，过渡音' : ''}）`;
+};
+if (plan.music === false) musicLine = '配乐：这期不要';
+else if (plan.music != null) {
+  const items = typeof plan.music === 'string' ? { 三处: plan.music } : plan.music;
+  if (typeof items !== 'object') errors.push('music 写法不对：写 false、"库:<编号>"，或者 {"片头": "库:…", "过渡": "库:…", "片尾": "库:…"}');
+  else {
+    const said = [];
+    for (const [k, v] of Object.entries(items)) {
+      if (!['三处', '片头', '过渡', '片尾'].includes(k)) { errors.push(`music 里的"${k}"不认识，只能写 片头、过渡、片尾`); continue; }
+      try {
+        if (isLibRef(v) && libTrack(v).kind === '过渡音' && k !== '过渡') errors.push(`music.${k} 用了过渡音 ${v}：过渡音只有几秒，只能用在"过渡"`);
+        said.push(`${k} ${describe(v)}`);
+      } catch (err) { errors.push(`music${k === '三处' ? '' : `.${k}`}：${err.message}`); }
+    }
+    musicLine = `配乐：${said.join('；')}${plan.musicWhy ? `。为什么：${plan.musicWhy}` : ''}`;
+    if (!plan.musicWhy) warns.push('选了配乐但没写为什么（musicWhy）：一句话说清这期为什么配这首，给主理人看');
+  }
+}
+
 if (errors.length) {
   console.error(`编排方案有 ${errors.length} 处要改：\n${errors.map((x) => '  · ' + x).join('\n')}`);
   process.exit(1);
@@ -104,7 +131,7 @@ if (target?.length) {
 const md = [`# 编排方案：${plan.title ?? '（还没定标题）'}`, ''];
 if (plan.titleOptions?.length) md.push('**标题备选**', '', ...plan.titleOptions.map((t, i) => `${i + 1}. ${t}`), '');
 if (plan.theme) md.push(`**一句话主题**：${plan.theme}`, '');
-md.push(`原始录音 ${fmt(totalLen)}，保留的人声约 ${mins(speech)}（已扣掉缩短的长停顿），加上片头片尾和过渡音乐约 ${mins(pack)}，**成品约 ${mins(est)}**。人声处理：${plan.voice === 'raw' ? '不处理' : '分人调平 + 低切降噪 + 轻度压缩'}。`, '');
+md.push(`原始录音 ${fmt(totalLen)}，保留的人声约 ${mins(speech)}（已扣掉缩短的长停顿），加上片头片尾和过渡音乐约 ${mins(pack)}，**成品约 ${mins(est)}**。人声处理：${plan.voice === 'raw' ? '不处理' : '分人调平 + 低切降噪 + 轻度压缩'}。`, '', `${musicLine}。`, '');
 md.push('## 编排', '', '| 板块 | 内容 | 句子 | 原位置 | 时长 |', '|---|---|---|---|---|');
 for (const sec of plan.sections) {
   const xs = parts.filter((x) => x.sec === sec);

@@ -1,0 +1,18 @@
+{
+  "说明": "配乐曲库。每首都核对过授权，可以免费商用。kind：曲子（片头铺底、截过渡、片尾铺底）或 过渡音（几秒，只用在板块之间）。mood 是情绪分类，fits 写适合什么内容。加曲子要同时记来源页、授权和 sha256，见 references/播客_配乐与授权.md。",
+  "tracks": [
+    {
+      "id": "aurora",
+      "file": "aurora_cc0.mp3",
+      "title": "Aurora",
+      "author": "Trex0n (Cal McEachern)",
+      "source": "https://opengameart.org/content/aurora-0",
+      "license": "CC0 1.0",
+      "sha256": "f61da5d2c1c32374ed7a1fa88a67a6d34fa88014501b8d2e4ae9e610004a9e2d",
+      "kind": "曲子",
+      "mood": ["沉静", "温暖"],
+      "seconds": 80,
+      "fits": "通用、不抢戏的氛围铺底；拿不准选哪首时用它（默认配乐）"
+    }
+  ]
+}

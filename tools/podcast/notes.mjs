@@ -54,7 +54,13 @@ md.push(...(plan.intro?.length ? plan.intro.flatMap((p) => [p, '']) : ['（简�
 md.push('## 时间轴', '', ...lines, '');
 const extra = [];
 const show = loadShow(e);
-if (edl.music?.length && (edl.musicFile ?? 'default') === 'default' && fs.existsSync(MUSIC)) extra.push('配乐：Aurora by Trex0n（CC0，来自 OpenGameArt）');
+if (edl.musicTracks?.length) {
+  // 曲库里的曲子自带署名；曲库外的（节目自己的）用档案的"配乐署名"，没写就提醒
+  const own = edl.musicTracks.filter((t) => !t.credit);
+  const credits = [...edl.musicTracks.filter((t) => t.credit).map((t) => t.credit), ...(own.length && show?.get('配乐署名') ? [show.get('配乐署名')] : [])];
+  if (credits.length) extra.push(`配乐：${credits.join('；')}`);
+  if (own.length && !show?.get('配乐署名')) todo.push(`配乐用的是节目自己的 ${own.map((t) => t.file).join('、')}，节目档案里没写"配乐署名"：确认有授权，需要署名的补上`);
+} else if (edl.music?.length && (edl.musicFile ?? 'default') === 'default' && fs.existsSync(MUSIC)) extra.push('配乐：Aurora by Trex0n（CC0，来自 OpenGameArt）');
 else if (edl.music?.length) {
   const credit = show?.get('配乐署名');
   if (credit) extra.push(`配乐：${credit}`);

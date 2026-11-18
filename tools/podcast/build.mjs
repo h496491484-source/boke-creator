@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { episode, mustExist, loadFull, readJson, writeJson, ff, measure, duration, fmt, fileSha, MUSIC, RATE, PUNCT, findInSentence } from '../lib/podcast.mjs';
 import { loadShow, showAsset, targetLufs } from '../lib/show.mjs';
+import { isLibRef, libTrack, trackByPath, credit } from '../lib/library.mjs';
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith('--'));
@@ -32,14 +33,32 @@ const plan = readJson(e.plan, null);
 if (!plan) { console.error('还没有 编排方案.json'); process.exit(1); }
 
 // 节目档案：片头、片尾（主理人自己的音频）、配乐、成品响度。没有档案就用默认（自带配乐、-16 LUFS、没有片头片尾）
-let show, LUFS, intro, outro, music;
+// 配乐分三处：片头铺底、板块过渡、片尾铺底。先看节目档案的"配乐"，再用这期 编排方案.json 的 music 覆盖：
+//   false 不要配乐；"库:<id>" 三处都用这一首；{ "片头": "库:a", "过渡": "库:b", "片尾": "库:a" } 分开指定（没写的那处照档案）。
+//   "过渡音"（几秒的短音）只能用在"过渡"。
+const PARTS = ['片头', '过渡', '片尾'];
+let show, LUFS, intro, outro, musicFor;
 try {
   show = loadShow(e);
   LUFS = targetLufs(show);
   const asset = (k) => { const p = showAsset(show, k); return p ? { file: p, dur: duration(p) } : null; };
   intro = asset('片头'); outro = asset('片尾');
-  const m = plan.music === false ? null : showAsset(show, '配乐');
-  music = m === 'default' ? (fs.existsSync(MUSIC) ? MUSIC : null) : m;
+  const sm = showAsset(show, '配乐');
+  const base = sm === 'default' ? (fs.existsSync(MUSIC) ? MUSIC : null) : sm;
+  const pick = (v, part) => {
+    if (v === false || v === null || /^(无|没有|不要|不加)$/.test(String(v).trim())) return null;
+    if (typeof v !== 'string') throw new Error(`编排方案.json 的 music${part ? `.${part}` : ''} 写法不对：写 false、"库:<编号>"，或者分开写 {"片头": …, "过渡": …, "片尾": …}`);
+    if (/^(默认|自带)$/.test(v.trim())) return fs.existsSync(MUSIC) ? MUSIC : null;
+    if (isLibRef(v)) return libTrack(v).path;
+    const hit = [path.resolve(e.work, v), show && path.resolve(show.assets, v)].filter(Boolean).find((p) => fs.existsSync(p) && fs.statSync(p).isFile());
+    if (!hit) throw new Error(`编排方案.json 的配乐写的是 ${v}，找不到这个文件，也不是"库:<编号>"。`);
+    return hit;
+  };
+  musicFor = Object.fromEntries(PARTS.map((k) => [k, base]));
+  if (plan.music === false) musicFor = Object.fromEntries(PARTS.map((k) => [k, null]));
+  else if (typeof plan.music === 'string') musicFor = Object.fromEntries(PARTS.map((k) => [k, pick(plan.music)]));
+  else if (plan.music && typeof plan.music === 'object') for (const k of PARTS) if (k in plan.music) musicFor[k] = pick(plan.music[k], k);
+  for (const k of ['片头', '片尾']) if (trackByPath(musicFor[k])?.kind === '过渡音') throw new Error(`${k}用了过渡音"${trackByPath(musicFor[k]).id}"：过渡音只有几秒，只能用在"过渡"。`);
   for (const [k, a] of [['片头', intro], ['片尾', outro]]) if (a && !(a.dur > 0.5 && a.dur < 180)) throw new Error(`节目档案的${k} ${path.basename(a.file)} 长 ${a.dur.toFixed(1)} 秒，读不出来或太长（片头片尾一般几秒到一两分钟）。`);
 } catch (err) { console.error(err.message); process.exit(1); }
 const TAIL = outro ? 1.0 + outro.dur + 2.0 : GAP.tail; // 人声结束之后还有多长
@@ -198,20 +217,29 @@ function render(processed, outDir) {
   // 配乐：片头铺底、板块过渡、片尾（有主理人自己的片尾就不铺）；人声出现时自动压低。
   // 片头、片尾（主理人自己的音频）：调到和人声一样响，放在留好的空当里，不压低
   const swell = edl.find((x) => x.kind === 'swell');
-  const pieces = music ? [
-    ...(swell ? [{ at: 0, from: 0, dur: swell.at + GAP.afterHook + 3.5, fin: 0.8, fout: 3.0 }] : []),
-    ...edl.filter((x) => x.kind === 'transition').map((x, k) => ({ at: Math.max(0, x.at - 0.15), from: 12 + ((k * 9) % 55), dur: x.dur + 0.9, fin: 0.35, fout: 1.4 })),
-    ...(outro ? [] : [{ at: voiceEnd - 2.5, from: 30, dur: 13, fin: 1.5, fout: 5 }]),
-  ] : [];
+  const [mi, mt, mo] = PARTS.map((k) => musicFor[k]);
+  const sting = trackByPath(mt)?.kind === '过渡音' ? duration(mt) : 0; // 过渡音：从头整段放，不截
+  const pieces = [
+    ...(swell && mi ? [{ part: '片头', file: mi, at: 0, from: 0, dur: swell.at + GAP.afterHook + 3.5, fin: 0.8, fout: 3.0 }] : []),
+    ...(mt ? edl.filter((x) => x.kind === 'transition').map((x, k) => (sting
+      ? { part: '过渡', file: mt, at: x.at, from: 0, dur: Math.min(sting, x.dur + 1.2), fin: 0.02, fout: Math.min(0.6, sting / 3) }
+      : { part: '过渡', file: mt, at: Math.max(0, x.at - 0.15), from: 12 + ((k * 9) % 55), dur: x.dur + 0.9, fin: 0.35, fout: 1.4 })) : []),
+    ...(outro || !mo ? [] : [{ part: '片尾', file: mo, at: voiceEnd - 2.5, from: 30, dur: 13, fin: 1.5, fout: 5 }]),
+  ];
   const assets = edl.filter((x) => x.kind === 'asset').map((x) => ({ ...x, file: (x.name === 'intro' ? intro : outro).file }));
-  const musicGain = pieces.length ? +((LUFS - MUSIC_BELOW_DB) - (measure(music).lufs ?? -22)).toFixed(1) : 0;
+  // 每首曲子实测响度，单独响的时候调到"目标响度 − 4 dB"
+  const gains = new Map();
+  for (const p of pieces) if (!gains.has(p.file)) gains.set(p.file, +((LUFS - MUSIC_BELOW_DB) - (measure(p.file).lufs ?? -22)).toFixed(1));
+  for (const p of pieces) p.gain = gains.get(p.file);
+  const musicGain = pieces.length ? pieces[0].gain : 0;
+  // 曲子短于取段起点时，从头循环取（stream_loop），所以短曲也能用；但 45 秒以上听着不重复
   const mixWav = path.join(outDir, 'mix.wav');
   if (pieces.length || assets.length) {
     const inputs = ['-i', voiceWav], filt = [];
     let n = 1;
     pieces.forEach((p, k) => {
-      inputs.push('-stream_loop', '-1', '-i', music);
-      filt.push(`[${n++}:a]atrim=start=${p.from.toFixed(2)}:duration=${p.dur.toFixed(2)},asetpts=PTS-STARTPTS,aresample=${RATE},aformat=channel_layouts=stereo,volume=${musicGain}dB,afade=t=in:d=${p.fin},afade=t=out:st=${(p.dur - p.fout).toFixed(2)}:d=${p.fout},adelay=${Math.round(p.at * 1000)}:all=1[m${k}]`);
+      inputs.push('-stream_loop', '-1', '-i', p.file);
+      filt.push(`[${n++}:a]atrim=start=${p.from.toFixed(2)}:duration=${p.dur.toFixed(2)},asetpts=PTS-STARTPTS,aresample=${RATE},aformat=channel_layouts=stereo,volume=${p.gain}dB,afade=t=in:d=${p.fin},afade=t=out:st=${(p.dur - p.fout).toFixed(2)}:d=${p.fout},adelay=${Math.round(p.at * 1000)}:all=1[m${k}]`);
     });
     assets.forEach((a, k) => {
       inputs.push('-i', a.file);
@@ -236,8 +264,10 @@ function render(processed, outDir) {
   for (const f of [voiceRaw, voiceWav, mixWav, mixRaw, finalWav]) fs.rmSync(f, { force: true });
   writeJson(path.join(outDir, '剪辑表.json'), {
     plan: fileSha(e.plan), processed, voiceEnd: +voiceEnd.toFixed(3), tail: +TAIL.toFixed(3), length: +(voiceEnd + TAIL).toFixed(3), lufs: LUFS,
-    show: show?.file ?? null, showSha: show ? fileSha(show.file) : null, musicFile: pieces.length ? (music === MUSIC ? 'default' : path.basename(music)) : null, musicGain,
-    assets: assets.map((a) => ({ name: a.name, file: path.basename(a.file), at: a.at, dur: +a.dur.toFixed(3) })), music: pieces, items: edl,
+    show: show?.file ?? null, showSha: show ? fileSha(show.file) : null, musicFile: pieces.length ? (pieces[0].file === MUSIC ? 'default' : path.basename(pieces[0].file)) : null, musicGain,
+    // 用到的每首曲子：哪一处、文件、曲库编号和署名（曲库外的文件没有署名，notes 会提醒）
+    musicTracks: [...new Set(pieces.map((p) => p.file))].map((f) => { const t = trackByPath(f); return { parts: [...new Set(pieces.filter((p) => p.file === f).map((p) => p.part))], file: f === MUSIC ? 'default' : path.basename(f), id: t?.id ?? null, credit: t ? credit(t) : null }; }),
+    assets: assets.map((a) => ({ name: a.name, file: path.basename(a.file), at: a.at, dur: +a.dur.toFixed(3) })), music: pieces.map((p) => ({ ...p, file: path.basename(p.file) })), items: edl,
   });
   fs.writeFileSync(path.join(outDir, '章节目录.txt'), chapters.map((c) => `${fmt(c.t)} ${c.name}`).join('\n') + '\n', 'utf8');
   return { mp3, edl, voiceEnd, clipped, chapters };
@@ -277,7 +307,9 @@ try {
     console.log(`剪精编版（${processed ? '带人声处理' : '不做人声处理'}）……`);
     const r = render(processed, e.out);
     const m = measure(r.mp3);
-    if (show) console.log(`节目档案：${[intro && `片头 ${path.basename(intro.file)}`, outro && `片尾 ${path.basename(outro.file)}`, `配乐 ${!music ? '无' : music === MUSIC ? '自带' : path.basename(music)}`, `响度 ${LUFS} LUFS`].filter(Boolean).join('，')}`);
+    const mName = (f) => (!f ? '无' : trackByPath(f) ? `库:${trackByPath(f).id}` : path.basename(f));
+    console.log(`配乐：${PARTS.map((k) => `${k} ${k === '片尾' && outro ? '（用节目片尾）' : mName(musicFor[k])}`).join('，')}`);
+    if (show) console.log(`节目档案：${[intro && `片头 ${path.basename(intro.file)}`, outro && `片尾 ${path.basename(outro.file)}`, `响度 ${LUFS} LUFS`].filter(Boolean).join('，')}`);
     console.log(`精编版：${fmt(r.voiceEnd + TAIL)}，${r.edl.filter((x) => x.kind === 'clip').length} 段，响度 ${m.lufs} LUFS，峰值 ${m.peak} dBFS，音量起伏 ${m.lra} LU${processed ? `，调平削顶 ${r.clipped} 个采样点` : ''}`);
     console.log(r.chapters.map((c) => `  ${fmt(c.t)} ${c.name}`).join('\n'));
     console.log('下一步：node tools/podcast/check.mjs <节目目录> 做机器检查，再 notes.mjs 出简介。');

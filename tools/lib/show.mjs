@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { readInfo, infoBlank, readJson, writeJson, RATE16 } from './podcast.mjs';
+import { isLibRef, libTrack } from './library.mjs';
 
 export const SHOW_DIR = '节目档案';
 const FILE = '档案.md';
@@ -26,7 +27,7 @@ export const SHOW_FIELDS = {
   简介风格: '（随便写，比如"口语、短句、带 emoji"；也可以把以前的简介放进 素材/，写文件名）',
   片头: '（素材/ 里的文件名：固定的片头曲或开场白，放在片头钩子之后、正文之前；没有钩子就放在最前面。不要写"无"）',
   片尾: '（素材/ 里的文件名：固定的片尾口播或片尾曲，放在正文结束之后。不要写"无"）',
-  配乐: '（板块过渡和片头片尾铺底用的音乐：写"默认"用技能自带的 CC0 曲子；写 素材/ 里的文件名用自己的；写"无"不加）',
+  配乐: '（板块过渡和片头片尾铺底用的音乐：写"默认"用技能自带的 CC0 曲子；写"库:<编号>"固定用曲库里的一首；写 素材/ 里的文件名用自己的；写"无"不加。不固定的话，每期按内容从曲库里挑）',
   配乐署名: '（用自己的音乐时写曲名、作者和授权，会写进简介）',
   响度: '（成品响度，默认 -16 LUFS；平台另有要求再改，比如 -14）',
   发布平台: '（小宇宙、喜马拉雅、B 站……）',
@@ -95,6 +96,7 @@ export function showAsset(show, field) {
   if (!v) return field === '配乐' ? 'default' : null;
   if (/^(无|没有|不要|不加|否)$/.test(v)) return null;
   if (field === '配乐' && /^(默认|自带|默认配乐)$/.test(v)) return 'default';
+  if (field === '配乐' && isLibRef(v)) return libTrack(v).path; // 技能自带曲库里的一首，写"库:<id>"
   const cands = [path.resolve(show.assets, v), path.resolve(show.dir, v), path.resolve(v)];
   const hit = cands.find((p) => fs.existsSync(p) && fs.statSync(p).isFile());
   if (!hit) throw new Error(`节目档案里"${field}"写的是 ${v}，但在 ${show.assets} 里找不到这个文件。把文件放进去，或者改档案。`);
