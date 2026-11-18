@@ -5,6 +5,7 @@
 //   node tools/get-model.mjs --mirror          先试国内镜像
 //   node tools/get-model.mjs --file <压缩包>   用已经下载好的压缩包（比如老师用 U 盘发的 .tar.bz2）
 //   node tools/get-model.mjs --dir <文件夹>    用已经解开的文件夹（里面有 model.int8.onnx 和 tokens.txt）
+//   node tools/get-model.mjs --podcast [--mirror] [--dir <文件夹>]   播客精编用的三个小模型，放到 models/podcast
 //
 // 模型来自 sherpa-onnx 项目转换的 SenseVoiceSmall（阿里 FunAudioLLM）。
 // 许可：FunASR 模型开源协议 1.1，可以使用、复制、修改、分享，条件是注明来源和作者、保留模型名称。
@@ -110,9 +111,61 @@ export async function getModel({ file, dir, mirrorFirst = false, force = false, 
   }
 }
 
+// ---- 播客精编用的三个小模型（人声检测、说话人切分、声纹，合计约 45 MB）----
+// 每个都按大小和 sha256 核对；dir 给了就从那个文件夹里按校验值认文件（不看文件名）
+export async function getPodcastModels({ dir, mirrorFirst = false, force = false, log = console.log } = {}) {
+  const { PODCAST_MODELS, PM_DIR, pmReady, pmPath } = await import('./lib/podcast.mjs');
+  const crypto = await import('node:crypto');
+  const sha256 = (f) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
+  fs.mkdirSync(PM_DIR, { recursive: true });
+  const failed = [];
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'boke-pm-'));
+  try {
+    const local = dir ? fs.readdirSync(path.resolve(dir), { recursive: true }).map((n) => path.join(path.resolve(dir), String(n))).filter((f) => fs.statSync(f).isFile()) : [];
+    for (const [key, m] of Object.entries(PODCAST_MODELS)) {
+      if (pmReady(key) && !force) continue;
+      const accept = (f) => fs.statSync(f).size === m.bytes && sha256(f) === m.sha256;
+      const hit = local.find((f) => fs.statSync(f).size === m.bytes && accept(f));
+      if (hit) { fs.copyFileSync(hit, pmPath(key)); log(`  ${m.what}：从 ${hit} 拷来`); continue; }
+      if (dir) { failed.push(`${m.what}（文件夹里没有）`); continue; }
+      const urls = mirrorFirst ? [...m.urls].reverse() : m.urls;
+      let ok = false;
+      for (const u of urls) {
+        const url = typeof u === 'string' ? u : u.archive;
+        try {
+          log(`  下载${m.what}（${mb(m.bytes)}）：${new URL(url).host}`);
+          const dest = path.join(tmp, path.basename(new URL(url).pathname));
+          await download(url, dest, () => {});
+          let file = dest;
+          if (typeof u !== 'string') {
+            const x = path.join(tmp, `x-${key}`); fs.mkdirSync(x, { recursive: true });
+            const r = spawnSync('tar', ['-xjf', dest, '-C', x], { encoding: 'utf8', windowsHide: true });
+            if (r.status !== 0) throw new Error('解压失败');
+            file = fs.readdirSync(x, { recursive: true }).map((n) => path.join(x, String(n))).find((f) => path.basename(f) === u.member);
+            if (!file) throw new Error('压缩包里没有模型文件');
+          }
+          if (!accept(file)) throw new Error('文件校验不对');
+          fs.copyFileSync(file, pmPath(key));
+          ok = true; break;
+        } catch (e) { log(`    没成功（${e.name === 'AbortError' ? '连不上或中途断了' : e.message}）`); }
+      }
+      if (!ok) failed.push(m.what);
+    }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  if (failed.length) throw new Error(`播客用的模型没下全：${failed.join('、')}。可以让已经装好的人把技能目录里的 models/podcast 文件夹拷给你，然后：node tools/get-model.mjs --podcast --dir <文件夹>`);
+  return { ok: true };
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
+  if (args.includes('--podcast')) {
+    try {
+      await getPodcastModels({ dir: opt('--dir'), mirrorFirst: args.includes('--mirror'), force: args.includes('--force') });
+      console.log('播客用的模型已就绪：models/podcast');
+    } catch (e) { console.error(e.message); process.exit(1); }
+    process.exit(0);
+  }
   try {
     const r = await getModel({ file: opt('--file'), dir: opt('--dir'), mirrorFirst: args.includes('--mirror'), force: args.includes('--force') });
     console.log(`识别模型已就绪：${MODEL_DIR}（来源：${r.from}）`);

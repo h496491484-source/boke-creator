@@ -50,7 +50,8 @@ const files = [];
 files.sort((a, b) => a.rel.localeCompare(b.rel));
 
 if (full) {
-  const missing = ['node_modules/@veedstudio/openedit-cli/cli/dist/cli.js', 'node_modules/sherpa-onnx-node/package.json', 'models/sense-voice/model.int8.onnx']
+  const missing = ['node_modules/@veedstudio/openedit-cli/cli/dist/cli.js', 'node_modules/sherpa-onnx-node/package.json', 'models/sense-voice/model.int8.onnx',
+    'models/podcast/silero_vad.onnx', 'models/podcast/pyannote-segmentation-3-0.onnx', 'models/podcast/3dspeaker-eres2net-base-zh.onnx']
     .filter((f) => !files.some((x) => x.rel === f));
   if (missing.length || !files.some((x) => x.rel.startsWith('.state/browser/'))) {
     console.error('这台电脑上还没装全，打不了离线完整包。先运行 node tools/setup.mjs，自检通过后再打。');

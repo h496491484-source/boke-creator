@@ -52,6 +52,12 @@ add('识别程序', shLoads ? '通过' : '未通过', shLoads ? `sherpa-onnx-nod
 const md = findModel(cfg);
 add('识别模型', md.ok ? '通过' : '未通过', md.ok ? `SenseVoice，在 ${md.dir}` : '没下载', md.ok ? null : SETUP);
 
+// 6b. 播客精编用的模型（只做口播视频用不到，所以缺了只算"提示"）
+const { PODCAST_MODELS, pmReady, MUSIC } = await import('./lib/podcast.mjs');
+const pmMiss = Object.keys(PODCAST_MODELS).filter((k) => !pmReady(k));
+add('播客模型', pmMiss.length ? '提示' : '通过', pmMiss.length ? `缺：${pmMiss.map((k) => PODCAST_MODELS[k].what).join('、')}。只做口播视频不受影响` : '人声检测、说话人切分、声纹', pmMiss.length ? SETUP : null);
+add('播客配乐', fs.existsSync(MUSIC) ? '通过' : '提示', fs.existsSync(MUSIC) ? 'Aurora（CC0）' : '技能包里的配乐文件不在，精编版会没有片头片尾音乐', fs.existsSync(MUSIC) ? null : '重新解压技能包');
+
 // 7. 示例用的朗读声音（只有跑示例才需要，不影响做自己的片子）
 let voice = null;
 if (process.platform === 'win32') {
@@ -73,6 +79,6 @@ for (const r of rows) {
 const failed = rows.filter((r) => r.status === '未通过');
 console.log(failed.length
   ? `\n有 ${failed.length} 项没过：${failed.map((r) => r.name).join('、')}。按箭头后面的办法处理，再跑一次自检。`
-  : '\n自检通过。可以先跑一遍示例：node tools/make.mjs examples/示例_只说一件事 --demo-voice');
+  : '\n自检通过。剪播客：node tools/podcast/new.mjs <节目目录> <录音文件>；口播视频可以先跑一遍示例：node tools/make.mjs examples/示例_只说一件事 --demo-voice');
 if (fs.existsSync(CONFIG_FILE)) console.log(`本机路径记在 ${CONFIG_FILE}`);
 process.exit(failed.length ? 1 : 0);

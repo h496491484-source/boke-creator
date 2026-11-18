@@ -10,7 +10,7 @@
 //   node_modules/   OpenEdit（渲染）和 sherpa-onnx（本地识别）
 //   .state/browser  渲染用的浏览器（约 120 MB）
 //   .state/ffmpeg   ffmpeg（只有 Windows 上找不到 ffmpeg 时才下载）
-//   models/         识别模型（约 240 MB）
+//   models/         识别模型（约 240 MB）；models/podcast 播客精编用的三个小模型（约 45 MB）
 // 唯一要自己先装的是 Node 18 以上。Mac 上的 ffmpeg 也要自己装（brew install ffmpeg）。
 
 import fs from 'node:fs';
@@ -117,6 +117,18 @@ else {
     const r = await getModel({ file: opt('--model-file'), dir: opt('--model-dir'), mirrorFirst, log: say });
     say(`✓ 装好了（来源：${r.from}）`);
   } catch (e) { say(`✗ ${e.message}`); todo.push('识别模型'); }
+}
+// 播客精编还要三个小模型（人声检测、说话人切分、声纹，合计约 45 MB）
+const { podcastModelsReady } = await import('./lib/podcast.mjs');
+if (podcastModelsReady()) say('✓ 播客精编用的模型已经有了');
+else if (checkOnly) { say('✗ 播客精编用的模型还没下载'); todo.push('播客精编用的模型'); }
+else {
+  say('下载播客精编用的模型（约 45 MB）……');
+  try {
+    const { getPodcastModels } = await import('./get-model.mjs');
+    await getPodcastModels({ dir: opt('--podcast-model-dir'), mirrorFirst, log: say });
+    say('✓ 装好了');
+  } catch (e) { say(`✗ ${e.message}`); todo.push('播客精编用的模型（只做口播视频的话可以不管）'); }
 }
 
 // ---- 5. ffmpeg ----
