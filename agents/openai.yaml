@@ -1,0 +1,7 @@
+interface:
+  display_name: "播客制作人"
+  short_description: "把一期播客原始录音剪成精编版（转写、编排方案、人声调平、配乐、简介时间轴）"
+  default_prompt: "使用 $boke-creator 把这期播客剪成精编版。"
+
+policy:
+  allow_implicit_invocation: true

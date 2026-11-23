@@ -1,0 +1,761 @@
+{
+  "说明": "配乐曲库。每首都在来源页核对过授权（licenseChecked 是核对日期），都是 CC0，可以免费商用。没有 url 的随技能包带着（template/配乐/）；有 url 的放在魔搭，剪辑用到哪首当场下载到 models/music/（setup --music 一次全下），按 bytes 和 sha256 核对。kind：曲子（片头铺底、截过渡、片尾铺底）或 过渡音（只用在板块之间，从头放、最多约 4 秒，更长的截断淡出）。mood 是情绪分类，fits 写适合什么内容。original 是来源页上原始文件的地址和校验值（我们转成了 128 kbps mp3）。加曲子见 references/播客_配乐与授权.md。",
+  "tracks": [
+    {
+      "id": "aurora",
+      "file": "aurora_cc0.mp3",
+      "title": "Aurora",
+      "author": "Trex0n (Cal McEachern)",
+      "source": "https://opengameart.org/content/aurora-0",
+      "license": "CC0 1.0",
+      "sha256": "f61da5d2c1c32374ed7a1fa88a67a6d34fa88014501b8d2e4ae9e610004a9e2d",
+      "kind": "曲子",
+      "mood": [
+        "沉静",
+        "温暖"
+      ],
+      "seconds": 80,
+      "fits": "通用、不抢戏的氛围铺底；拿不准选哪首时用它（默认配乐）",
+      "bytes": 1601350,
+      "licenseChecked": "2026-11-16"
+    },
+    {
+      "id": "another-august",
+      "file": "another-august.mp3",
+      "title": "Another August",
+      "author": "cynicmusic",
+      "source": "https://opengameart.org/content/another-august",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "温暖",
+        "怀旧"
+      ],
+      "seconds": 207,
+      "fits": "回忆、成长、慢慢聊的个人经历",
+      "bytes": 3306223,
+      "sha256": "e80a1b83f08a3d513e98889d490755a2016cd11e4e0b97508e36e89fcb9e4906",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/another-august.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/013_Another_August_0.mp3",
+        "sha256": "6de6e4f770cda4d34db433e4df982deccb6877a8fcc5e32b48eeb57f770dec3b",
+        "bytes": 8269313
+      }
+    },
+    {
+      "id": "apple-cider",
+      "file": "apple-cider.mp3",
+      "title": "Apple Cider",
+      "author": "Zane Little Music",
+      "source": "https://opengameart.org/content/apple-cider",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "温暖",
+        "轻快"
+      ],
+      "seconds": 200,
+      "fits": "生活方式、日常分享、轻松的朋友闲聊",
+      "bytes": 3198808,
+      "sha256": "1832d0d8e740e38a069bd3e0f6f17880c3c09d02a5279e5aebfb06f8ec5f8347",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/apple-cider.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/apple_cider.ogg",
+        "sha256": "29dfe7f2491fa2cabd159db70db868445be253e395db5f75b30b3113f798f4ca",
+        "bytes": 3240559
+      }
+    },
+    {
+      "id": "small-fire",
+      "file": "small-fire.mp3",
+      "title": "A Small Fire Will Do",
+      "author": "Trex0n",
+      "source": "https://opengameart.org/content/a-small-fire-will-do-calming-loop",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "温暖",
+        "沉静"
+      ],
+      "seconds": 64,
+      "fits": "安静的长谈、睡前、情绪类话题",
+      "bytes": 1025022,
+      "sha256": "3fe2e2ef853385dc00e8d7741cd8752cd2c4f458402b2ec396f78e05f6409c29",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/small-fire.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/a_small_fire_will_do.wav",
+        "sha256": "1cb42057e724224d6047f651b95598f5c094caaaba47f6430dd5d540c09c4414",
+        "bytes": 16934546
+      }
+    },
+    {
+      "id": "warmth",
+      "file": "warmth.mp3",
+      "title": "warmth",
+      "author": "jordan4ibanez",
+      "source": "https://opengameart.org/content/warmth",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "温暖"
+      ],
+      "seconds": 39,
+      "fits": "短小温暖的过渡；曲子只有 39 秒，铺长了会听出循环",
+      "bytes": 624166,
+      "sha256": "0105cfd7356bc9de768daa8568f8f52b139e129355ac37f6d34dd58a3dfe4611",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/warmth.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/warmth_1.ogg",
+        "sha256": "e0fa67b0a1670763916141195cc89f73cb13514e3127633a5c495a4b3efabb55",
+        "bytes": 309935
+      }
+    },
+    {
+      "id": "ukulele-surf",
+      "file": "ukulele-surf.mp3",
+      "title": "Happy Ukelele Island Surfing Theme",
+      "author": "Tarush Singhal",
+      "source": "https://opengameart.org/content/happy-ukelele-island-surfing-theme",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "轻快",
+        "阳光"
+      ],
+      "seconds": 136,
+      "fits": "旅行、夏天、轻松好玩的话题",
+      "bytes": 2174015,
+      "sha256": "6656fe5b03d8314d9c0ba0fdbc9d0acc038d35b1bf506a6299f39bf9bbbbf090",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/ukulele-surf.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/ukele.mp3",
+        "sha256": "371bfc606045dbaadc234696049d474f1b3473dc336fda8d0e183c17d9f1533f",
+        "bytes": 3259523
+      }
+    },
+    {
+      "id": "summer-tune",
+      "file": "summer-tune.mp3",
+      "title": "Feel Good Summer Tune",
+      "author": "skrjablin",
+      "source": "https://opengameart.org/content/feel-good-summer-tune",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "轻快",
+        "阳光"
+      ],
+      "seconds": 182,
+      "fits": "轻松闲聊、好消息、生活趣事",
+      "bytes": 2907921,
+      "sha256": "b1abff58c9d9453595c910070a45356a8f2e5f55b9f2a4e87cdcb8673baa583f",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/summer-tune.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/feel_good_summer_tune.ogg",
+        "sha256": "1c7546c160193fccf944a9186861e4fdec1b2e4c31e25318775b90f1e3b04f6a",
+        "bytes": 2887639
+      }
+    },
+    {
+      "id": "mocha-frapp",
+      "file": "mocha-frapp.mp3",
+      "title": "Mocha Frapp",
+      "author": "Pro Sensory",
+      "source": "https://opengameart.org/content/mocha-frapp",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "轻快",
+        "咖啡馆"
+      ],
+      "seconds": 130,
+      "fits": "咖啡馆式闲聊、职场日常、生活方式",
+      "bytes": 2079508,
+      "sha256": "c0f0aa11814635be3e4e32ed62fb3eeace7b4bc00f07666f7538eed3ef069c5a",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/mocha-frapp.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/mocha_frapp_2.mp3",
+        "sha256": "8755e6a748800e23437bd4c9c9cdc53a7cd2fa2395c7b332287d37c5be8cb699",
+        "bytes": 3119942
+      }
+    },
+    {
+      "id": "happy-lofi-day",
+      "file": "happy-lofi-day.mp3",
+      "title": "happy lofi day",
+      "author": "Tarush Singhal",
+      "source": "https://opengameart.org/content/happy-lofi-day",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "轻快",
+        "夜谈"
+      ],
+      "seconds": 116,
+      "fits": "轻松的 lofi 闲聊、学习工作日常",
+      "bytes": 1863432,
+      "sha256": "dd5314d6ba9801d8fdbaedb2f3c0b7e8f44873203ae7fc2dbcbf5241cd79b1a4",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/happy-lofi-day.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/rhodes.mp3",
+        "sha256": "50e70d0b7b7a2df31c6b6e900f66d77dee3302a0e631849edcc78fe628cf4c3a",
+        "bytes": 2793656
+      }
+    },
+    {
+      "id": "calm-piano",
+      "file": "calm-piano.mp3",
+      "title": "Calm Piano 1 (Vaporware)",
+      "author": "cynicmusic",
+      "source": "https://opengameart.org/content/calm-piano-1-vaporware",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "沉静",
+        "思考"
+      ],
+      "seconds": 165,
+      "fits": "观点讨论、读书、知识类",
+      "bytes": 2640432,
+      "sha256": "e4341bb10dcbf5d4f411cac47c1015917515b909002c194fd3049ab8645f72f0",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/calm-piano.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/003_Vaporware_2.mp3",
+        "sha256": "1697fa1b7ed6f3fe1eca4daa4f9d1a2eb3db8fe40a0f3c283529ab47e57b5b38",
+        "bytes": 6604773
+      }
+    },
+    {
+      "id": "calm-ambient",
+      "file": "calm-ambient.mp3",
+      "title": "Calm Ambient 3 (Lifewave 2k)",
+      "author": "cynicmusic",
+      "source": "https://opengameart.org/content/calm-ambient-3-lifewave-2k",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "沉静",
+        "思考"
+      ],
+      "seconds": 187,
+      "fits": "知识科普、深度访谈、科技话题",
+      "bytes": 2998631,
+      "sha256": "c64bc97c34984e52a86e1909af70f7655571cb8a2a3569f9a28f246b007bea7a",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/calm-ambient.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/006_lifeWave2k_0.mp3",
+        "sha256": "f6a796483aee743d72fd9abd44002694246bb3a7977239abbace2a56a0d344ce",
+        "bytes": 7500268
+      }
+    },
+    {
+      "id": "forget-me-not",
+      "file": "forget-me-not.mp3",
+      "title": "Forget Me Not",
+      "author": "Kistol",
+      "source": "https://opengameart.org/content/forget-me-not",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "沉静",
+        "温柔"
+      ],
+      "seconds": 124,
+      "fits": "情感、回忆、比较私人的话题",
+      "bytes": 1986720,
+      "sha256": "7c4e7937f1bdf9a207ff7d498ec815d61eb81019dee60a67ea82d9ea58fb88fb",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/forget-me-not.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/forget_me_not_in_f_major_looped.ogg",
+        "sha256": "2b9b9fc512c34d52b999ed1fd7e01f960f830f3defc5d2241f6e02f8be81ef77",
+        "bytes": 3341384
+      }
+    },
+    {
+      "id": "contemplation",
+      "file": "contemplation.mp3",
+      "title": "Contemplation",
+      "author": "Joth",
+      "source": "https://opengameart.org/content/contemplation-0",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "沉静",
+        "思考"
+      ],
+      "seconds": 120,
+      "fits": "严肃、偏沉重的讨论；拿不准语气时也稳",
+      "bytes": 1921936,
+      "sha256": "4debc344d9a41df9863310eca873e5fee8c9e2cba66026a65fa1bb7cb4e90d4a",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/contemplation.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/Contemplation.mp3",
+        "sha256": "283962d3a975c93613c46cda30c9f0816176ae3e2899f961591a49e2d41b4bf3",
+        "bytes": 2405271
+      }
+    },
+    {
+      "id": "slow-piano",
+      "file": "slow-piano.mp3",
+      "title": "Slow Piano Intermission",
+      "author": "Spring Spring",
+      "source": "https://opengameart.org/content/slow-piano-intermission",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "沉静",
+        "伤感"
+      ],
+      "seconds": 72,
+      "fits": "沉重话题、告别、纪念（原曲很轻，会自动调响）",
+      "bytes": 1147902,
+      "sha256": "42fa2e7e0682e80dde9680d020d739bacd72e3c2b3f096386c055eb1ebeeb539",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/slow-piano.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/slow%20piano%20intermission_0.ogg",
+        "sha256": "cff4eb930f188bced35f2cc2dd87256641e5dab722096977060dbe1ed7214b87",
+        "bytes": 1176612
+      }
+    },
+    {
+      "id": "chill-lofi",
+      "file": "chill-lofi.mp3",
+      "title": "Chill lofi inspired",
+      "author": "omfgdude",
+      "source": "https://opengameart.org/content/chill-lofi-inspired",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "夜谈",
+        "轻松"
+      ],
+      "seconds": 123,
+      "fits": "深夜闲聊、城市生活、年轻人话题",
+      "bytes": 1971687,
+      "sha256": "1fe750cee746a86a7c578031a19e055b14e005419297305fe977d51b810167cd",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/chill-lofi.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/ChillLofiR_0.mp3",
+        "sha256": "1796a480e3db0c02d5e58059b2ae7cfbeab344f95e0443496790da022cbe91b5",
+        "bytes": 2717205
+      }
+    },
+    {
+      "id": "lofi-hip-hop",
+      "file": "lofi-hip-hop.mp3",
+      "title": "lofi hip hop",
+      "author": "omfgdude",
+      "source": "https://opengameart.org/content/lofi-hip-hop",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "夜谈"
+      ],
+      "seconds": 150,
+      "fits": "深夜长谈、随性聊天",
+      "bytes": 2403425,
+      "sha256": "b6b84c7b74d2e7969c05083744589086dea06b9c9de72a9e25cf96a661eed386",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/lofi-hip-hop.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/lofihiphop.ogg",
+        "sha256": "8641e8203d0e7dc06db0276b69fc15f59e9f45faf76d2d647bc076a3339c1ef1",
+        "bytes": 1532926
+      }
+    },
+    {
+      "id": "since-2am",
+      "file": "since-2am.mp3",
+      "title": "Since 2 A.M.",
+      "author": "TAD",
+      "source": "https://opengameart.org/content/since-2-am",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "夜谈",
+        "沉静"
+      ],
+      "seconds": 257,
+      "fits": "深夜、独处、慢节奏的长谈",
+      "bytes": 4106184,
+      "sha256": "026879b73a22732e0f8febc538517fab2157cc35fbd3d1aa0f42b94193ed7e62",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/since-2am.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/since_2_a.m_0.mp3",
+        "sha256": "6c7e41041669391c46efa0a7f1f834581d27234ce2f0cb8cb5cb38df6bc3ac1a",
+        "bytes": 4109292
+      }
+    },
+    {
+      "id": "midnight-cruiser",
+      "file": "midnight-cruiser.mp3",
+      "title": "Midnight Cruiser",
+      "author": "Zane Little Music",
+      "source": "https://opengameart.org/content/midnight-cruiser",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "夜谈",
+        "都市"
+      ],
+      "seconds": 144,
+      "fits": "城市夜晚、开车、都市生活",
+      "bytes": 2311909,
+      "sha256": "7c0bd79aba54cc77204a49fad0d64f4ebb85e65285feb1831351f80e202c472b",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/midnight-cruiser.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/midnight_cruiser_0.mp3",
+        "sha256": "be0285ba239d85c47c6a0de6466123e3fe8dbc4ad4d9419ccd224ab8ea2b54fc",
+        "bytes": 5778728
+      }
+    },
+    {
+      "id": "jazzy-blues",
+      "file": "jazzy-blues.mp3",
+      "title": "Jazzy blues",
+      "author": "LushoGames",
+      "source": "https://opengameart.org/content/jazzy-blues",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "爵士"
+      ],
+      "seconds": 53,
+      "fits": "轻松的文化、美食、生活话题；曲子 53 秒",
+      "bytes": 842347,
+      "sha256": "a73ae18909033f13dff7b14c872a955778f5846b3497ddb6c74d414c90bbc00c",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/jazzy-blues.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/blues_0.mp3",
+        "sha256": "9e410244ba3bf767b57a97564a3886fada87661ec51346329f0c2b3435fe9858",
+        "bytes": 2103507
+      }
+    },
+    {
+      "id": "taken-lightly",
+      "file": "taken-lightly.mp3",
+      "title": "Taken Lightly",
+      "author": "Pro Sensory",
+      "source": "https://opengameart.org/content/taken-lightly",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "爵士",
+        "轻快"
+      ],
+      "seconds": 145,
+      "fits": "轻松调侃、吐槽、生活方式",
+      "bytes": 2319420,
+      "sha256": "a4b2a95fcf531d4df1da8073bcfadf81d26834786c8943cff4f88e64c99604ec",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/taken-lightly.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/TakenLightly_0.mp3",
+        "sha256": "27df76f170cdaa6f1911db6bca99e78b4b80731701e0f170aad32f90b90be3a5",
+        "bytes": 2319089
+      }
+    },
+    {
+      "id": "you-and-me-guitar",
+      "file": "you-and-me-guitar.mp3",
+      "title": "Just you and me Guitar",
+      "author": "Pro Sensory",
+      "source": "https://opengameart.org/content/just-you-and-me-guitar",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "爵士",
+        "温暖"
+      ],
+      "seconds": 99,
+      "fits": "朋友、关系、温暖的对谈",
+      "bytes": 1585920,
+      "sha256": "9458cc650a360428bd6349aaacef164ca799c8b09f8cf1ba23c513d68071c402",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/you-and-me-guitar.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/Just%20you%20and%20me_2.mp3",
+        "sha256": "9e541c7e797a8fec766e952e0549134cca945ff038a97f32ddb19b75b67ae9f1",
+        "bytes": 2378022
+      }
+    },
+    {
+      "id": "ladada-guitar",
+      "file": "ladada-guitar.mp3",
+      "title": "LaDaDa Guitar",
+      "author": "Pro Sensory",
+      "source": "https://opengameart.org/content/ladada-guitar",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "爵士",
+        "轻快"
+      ],
+      "seconds": 154,
+      "fits": "轻快的闲聊、旅行、生活",
+      "bytes": 2459436,
+      "sha256": "db3de49c9051335cdc8d8696644af04c5cfbc9b84ceb986fd5f6728e4a21190c",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/ladada-guitar.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/LaDaDaGuitar_2.mp3",
+        "sha256": "dd6d98d5fd95a1da4248b6bbd065565592ee7a7fdbb5d6c47dd96b704a15ee4e",
+        "bytes": 3688324
+      }
+    },
+    {
+      "id": "red-heels-piano",
+      "file": "red-heels-piano.mp3",
+      "title": "Red Heels (piano ver)",
+      "author": "TAD",
+      "source": "https://opengameart.org/content/red-heels-piano-ver",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "爵士",
+        "优雅"
+      ],
+      "seconds": 87,
+      "fits": "文化、艺术、女性话题、优雅一点的访谈",
+      "bytes": 1398244,
+      "sha256": "323e9370fa5b223057202aed133c7b44ecba6dfeeb821ba73a6c9eb3cb25a849",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/red-heels-piano.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/Red%20Heels%20piano%20ver_0.mp3",
+        "sha256": "d09d7e9daf7536d1717752d5b18df0d507dbcec32d86fd18e1d5a093fd917f1a",
+        "bytes": 2798572
+      }
+    },
+    {
+      "id": "progress",
+      "file": "progress.mp3",
+      "title": "Progress",
+      "author": "josepharaoh99",
+      "source": "https://opengameart.org/content/progress",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "振奋"
+      ],
+      "seconds": 130,
+      "fits": "创业、成长、目标、年终总结",
+      "bytes": 2074488,
+      "sha256": "84cdc001db3e27aa3b6cd41571719288d28df4f7b6c26d792618d4af0f0dbec9",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/progress.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/Progress.mp3",
+        "sha256": "51e244867ad9e822bd9a11f76b2dbf87c6ed3b07dedae5068c1fb50a5a90bb5e",
+        "bytes": 5185960
+      }
+    },
+    {
+      "id": "early-dawn",
+      "file": "early-dawn.mp3",
+      "title": "Rise Of The Early Dawn",
+      "author": "antonioraymond71",
+      "source": "https://opengameart.org/content/rise-of-the-early-dawn",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "振奋",
+        "温暖"
+      ],
+      "seconds": 102,
+      "fits": "新开始、清晨、积极的话题",
+      "bytes": 1633990,
+      "sha256": "8a5c8969c0f4b712439319378034af397f3ad36bd2daa37a9eda44f5972f69a5",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/early-dawn.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/rise_of_the_early_dawn.mp3",
+        "sha256": "7fe65bcf3caca704a6e0bbcff9e5ecef9bf9aa30f599d6df27ea7d6c9a97d1a9",
+        "bytes": 2045304
+      }
+    },
+    {
+      "id": "electro-opening",
+      "file": "electro-opening.mp3",
+      "title": "Electro Opening Theme",
+      "author": "CleytonKauffman",
+      "source": "https://opengameart.org/content/electro-opening-theme",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "振奋",
+        "科技"
+      ],
+      "seconds": 34,
+      "fits": "科技、互联网话题的开场；曲子 34 秒",
+      "bytes": 541024,
+      "sha256": "12427192c3bee431a0aaab3ea262a49f59cdc1f9110e7a56b2f84937e8d6c6ca",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/electro-opening.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/Electro%20Opening%20Theme.ogg",
+        "sha256": "c648e88b0539e259d7598669cf2657b9a6176126b4e5e54a5645d95d60bb8bf6",
+        "bytes": 1369641
+      }
+    },
+    {
+      "id": "play-now",
+      "file": "play-now.mp3",
+      "title": "Anime-esque Intro-Outro Theme (Play Now)",
+      "author": "CleytonKauffman",
+      "source": "https://opengameart.org/content/anime-esque-intro-outro-theme",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "振奋",
+        "动漫"
+      ],
+      "seconds": 34,
+      "fits": "游戏、动漫、二次元话题；曲子 34 秒",
+      "bytes": 547320,
+      "sha256": "a0fae652a7b8604c35d41c4d12037a331757a82559dfcfbffd45b363f63d0fa0",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/play-now.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/Play%20Now_0.mp3",
+        "sha256": "9cd2e18d9443a28a181a1cdbf9d11a18bcbacd036255976fda2a40d46ed8fb29",
+        "bytes": 1365866
+      }
+    },
+    {
+      "id": "daylight-sting",
+      "file": "daylight-sting.mp3",
+      "title": "Daylight Stinger",
+      "author": "SterlingRay",
+      "source": "https://opengameart.org/content/daylight-stinger",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "过渡音",
+      "mood": [
+        "明亮"
+      ],
+      "seconds": 18,
+      "fits": "板块之间的明亮转场（只放开头约 4 秒）",
+      "bytes": 293996,
+      "sha256": "e62ca0a54d43f0fdaf039f89fd75a69d1ac818df7ec4e568fe23eafaf9681557",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/daylight-sting.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/daylight_stinger.mp3",
+        "sha256": "e3e8a87d3fcb2d297eaeb835c635d89f00b405e22473c68286bbf9e4a83bd8f7",
+        "bytes": 734562
+      }
+    },
+    {
+      "id": "success-sting",
+      "file": "success-sting.mp3",
+      "title": "Success Stinger",
+      "author": "SterlingRay",
+      "source": "https://opengameart.org/content/success-stinger",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "过渡音",
+      "mood": [
+        "明亮",
+        "振奋"
+      ],
+      "seconds": 17,
+      "fits": "板块之间、讲完一个好消息或结论后（只放开头约 4 秒）",
+      "bytes": 270588,
+      "sha256": "83acc8ba78e3b9bd6c7cc43d6a5326633d6ebd78065ccf42ea324385e8767de0",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/success-sting.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/success_stinger.mp3",
+        "sha256": "c301d00bff14afe1cf72749c3616e734ec153079de9170929cb4c05f623571b3",
+        "bytes": 676048
+      }
+    },
+    {
+      "id": "new-town-sting",
+      "file": "new-town-sting.mp3",
+      "title": "New Town Stinger",
+      "author": "SterlingRay",
+      "source": "https://opengameart.org/content/new-town-stinger",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "过渡音",
+      "mood": [
+        "明亮",
+        "轻快"
+      ],
+      "seconds": 18,
+      "fits": "板块之间，换一个新话题（只放开头约 4 秒）",
+      "bytes": 296086,
+      "sha256": "6ecad1bc86088581a0c7dce10529d2988847b0f92e00d51c2d437e443aa2be5b",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/new-town-sting.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/new_town_stinger.mp3",
+        "sha256": "3c42093117819e9300e0dd2b370431d3cb89b19143472a336e0346d7b1128d4a",
+        "bytes": 739786
+      }
+    },
+    {
+      "id": "short-jingle",
+      "file": "short-jingle.mp3",
+      "title": "Short Jingle",
+      "author": "OO",
+      "source": "https://opengameart.org/content/short-jingle",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "过渡音",
+      "mood": [
+        "轻快"
+      ],
+      "seconds": 4,
+      "fits": "最短的过渡（响约 2 秒，整段放），板块很多时用",
+      "bytes": 64101,
+      "sha256": "53be6891e3000d159615e5f97b824ecf06f40e862143301076c54fd2b929fc27",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/short-jingle.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/PositiveChoice_0.ogg",
+        "sha256": "9a2288c29f9edfc1ab67869a00e84314f7343324f52a0c987baf2de9d7d38177",
+        "bytes": 83699
+      }
+    },
+    {
+      "id": "distant-jingle",
+      "file": "distant-jingle.mp3",
+      "title": "Distant Jingle",
+      "author": "Centurion_of_war",
+      "source": "https://opengameart.org/content/distant-jingle",
+      "license": "CC0 1.0",
+      "licenseChecked": "2026-11-18",
+      "kind": "曲子",
+      "mood": [
+        "沉静",
+        "空灵"
+      ],
+      "seconds": 64,
+      "fits": "安静、空灵的转场或铺底",
+      "bytes": 1025007,
+      "sha256": "a1be73c5f95198e337b2873b38910d93ae6fc4a9910b9c5e0d32b5e21898f19b",
+      "url": "https://modelscope.cn/models/jimmy444629/boke-creator-models/resolve/master/music/distant-jingle.mp3",
+      "original": {
+        "url": "https://opengameart.org/sites/default/files/jingle_45_0.ogg",
+        "sha256": "703679ab8389ddea304c90d46afb650a1d563d0226dddc6f7e618c921c948b2b",
+        "bytes": 1557197
+      }
+    }
+  ]
+}

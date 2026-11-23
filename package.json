@@ -1,0 +1,13 @@
+{
+  "name": "boke-creator",
+  "version": "0.7.0",
+  "private": true,
+  "description": "播客制作人：把一期播客原始录音剪成精编版。先运行 node tools/setup.mjs。",
+  "scripts": {
+    "setup": "node tools/setup.mjs",
+    "doctor": "node tools/doctor.mjs"
+  },
+  "dependencies": {
+    "sherpa-onnx-node": "2.0.1"
+  }
+}

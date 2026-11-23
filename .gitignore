@@ -1,0 +1,6 @@
+# 安装时下载的东西和本机路径，不进分发包
+node_modules/
+.state/
+models/
+boke-creator.local.json
+dist/
